@@ -12,12 +12,15 @@ matplotlib = "^3.6.3"
 scikit-learn = "^1.2.0"
 pytest = "^7.2.1"
 ruff = "^0.0.224"
+torch = "1.13.1"
+torchvision = "^0.14.1"
 
 
 [tool.poetry.group.dev.dependencies]
 autopep8 = "^2.0.1"
 ruff = "^0.0.224"
 pre-commit = "^2.21.0"
+tqdm = "^4.64.1"
 
 [build-system]
 requires = ["poetry-core"]
