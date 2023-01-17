@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "scratch"
+version = "0.1.0"
+description = ""
+authors = ["Nick Wall <46641379+walln@users.noreply.github.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+numpy = "^1.24.1"
+matplotlib = "^3.6.3"
+scikit-learn = "^1.2.0"
+pytest = "^7.2.1"
+ruff = "^0.0.224"
+
+
+[tool.poetry.group.dev.dependencies]
+autopep8 = "^2.0.1"
+ruff = "^0.0.224"
+pre-commit = "^2.21.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+log_cli=true

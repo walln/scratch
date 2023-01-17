@@ -1,0 +1,16 @@
+repos:
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    # Ruff version.
+    rev: "v0.0.224"
+    hooks:
+      - id: ruff
+        # Respect `exclude` and `extend-exclude` settings.
+        args: ["--force-exclude"]
+  - repo: local
+    hooks:
+      - id: test
+        name: test
+        entry: poetry run pytest
+        language: system
+        types: [python]
+        pass_filenames: false
