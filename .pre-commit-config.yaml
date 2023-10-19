@@ -1,9 +1,4 @@
 repos:
-  - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
-    rev: "v9.5.0"
-    hooks:
-      - id: commitlint
-        stages: [commit-msg]
   - repo: https://github.com/charliermarsh/ruff-pre-commit
     rev: "v0.1.0"
     hooks:
@@ -19,3 +14,9 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
+      - id: commit-msg
+        name: conventional-commit-messages
+        language: pygrep
+        entry: "^(chore|test|feat|fix|build|docs|refactor)!?: ((?!.*(ing))(?!.*(ed))).*$"
+        args: [--multiline, --negate] # fails if the entry is NOT matched
+        stages: [commit-msg]
