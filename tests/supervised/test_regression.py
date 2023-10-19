@@ -3,17 +3,20 @@ from sklearn.metrics import accuracy_score, mean_squared_error, r2_score, f1_sco
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
-from scratch.supervised.regression import (ElasticNet, LinearRegression,
-                                           LogisticRegression, RidgeRegression,
-                                           LassoRegression)
+from scratch.supervised.regression import (
+    ElasticNet,
+    LinearRegression,
+    LogisticRegression,
+    RidgeRegression,
+    LassoRegression,
+)
 from scratch.utils.logging import setup_logger
 
 logger = setup_logger()
 
 
 def regression_dataset():
-    X, y = make_regression(n_samples=2000, n_features=1,
-                           noise=20, random_state=1)
+    X, y = make_regression(n_samples=2000, n_features=1, noise=20, random_state=1)
     # X, y = load_diabetes(return_X_y=True)
 
     data_scaler = StandardScaler()
@@ -24,7 +27,8 @@ def regression_dataset():
     y = y.reshape(-1)
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.4, shuffle=False)
+        X, y, test_size=0.4, shuffle=False
+    )
 
     return X_train, X_test, y_train, y_test
 
@@ -108,7 +112,8 @@ def test_elastic_net():
 def test_logistic_regression():
     X, y = make_classification(n_samples=2000, random_state=1)
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.4, shuffle=False)
+        X, y, test_size=0.4, shuffle=False
+    )
 
     model = LogisticRegression()
     model.fit(X_train, y_train)

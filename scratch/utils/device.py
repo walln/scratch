@@ -12,7 +12,7 @@ def get_device():
     been tested for these implementations.
     """
     if cuda_is_available():
-        return torch.device('cuda')
+        return torch.device("cuda")
     if mps_is_available():
-        return torch.device('mps')
-    return torch.device('cpu')
+        return torch.device("mps")
+    return torch.device("cpu")

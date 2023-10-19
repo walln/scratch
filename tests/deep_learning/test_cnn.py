@@ -16,7 +16,7 @@ torch.manual_seed(random_seed)
 logger = setup_logger()
 
 device = get_device()
-logger.info(f'Using device: {device.type}')
+logger.info(f"Using device: {device.type}")
 
 
 def test_cnn():
@@ -43,12 +43,13 @@ def test_cnn():
         model = model.eval()
         train_accuracy = compute_accuracy(model, train_loader, device)
         logger.info(
-            f'Epoch: {epoch + 1}/{num_epochs} | Training Accuracy: {train_accuracy}')
+            f"Epoch: {epoch + 1}/{num_epochs} | Training Accuracy: {train_accuracy}"
+        )
         assert train_accuracy.item() > 0.85
         assert train_accuracy.item() < 1.0
 
     with torch.set_grad_enabled(False):
         test_accuracy = compute_accuracy(model, test_loader, device)
-        logger.info(f'Test Accuracy: {test_accuracy}')
+        logger.info(f"Test Accuracy: {test_accuracy}")
         assert test_accuracy.item() > 0.85
         assert test_accuracy.item() < 1.0

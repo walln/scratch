@@ -14,12 +14,14 @@ class BasicResidualBlock(nn.Module):
         self.stride = stride
 
         self.conv_1 = nn.Conv2d(
-            input_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
+            input_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False
+        )
         self.norm_1 = nn.BatchNorm2d(planes)
         self.relu = nn.ReLU(inplace=True)
 
         self.conv_2 = nn.Conv2d(
-            planes, planes, kernel_size=3, stride=1, padding=1, bias=False)
+            planes, planes, kernel_size=3, stride=1, padding=1, bias=False
+        )
         self.norm_2 = nn.BatchNorm2d(planes)
 
     def forward(self, x):
@@ -42,12 +44,9 @@ class BasicResidualBlock(nn.Module):
 
 
 class ResNet(nn.Module):
-    def __init__(self,
-                 num_classes=10,
-                 num_layers=2,
-                 block_type=BasicResidualBlock,
-                 is_grey=False
-                 ):
+    def __init__(
+        self, num_classes=10, num_layers=2, block_type=BasicResidualBlock, is_grey=False
+    ):
         super(ResNet, self).__init__()
 
         # Image are in RGB format
@@ -63,18 +62,16 @@ class ResNet(nn.Module):
         self.inner = 64
 
         self.conv_1 = nn.Conv2d(
-            self.input_dim, 64, kernel_size=7, stride=2, padding=3, bias=False)
+            self.input_dim, 64, kernel_size=7, stride=2, padding=3, bias=False
+        )
         self.batch_norm_1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
         self.max_pool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
         self.layer1 = self._make_layer(self.block_type, 64, self.num_layers)
-        self.layer2 = self._make_layer(
-            self.block_type, 128, self.num_layers, stride=2)
-        self.layer3 = self._make_layer(
-            self.block_type, 256, self.num_layers, stride=2)
-        self.layer4 = self._make_layer(
-            self.block_type, 512, self.num_layers, stride=2)
+        self.layer2 = self._make_layer(self.block_type, 128, self.num_layers, stride=2)
+        self.layer3 = self._make_layer(self.block_type, 256, self.num_layers, stride=2)
+        self.layer4 = self._make_layer(self.block_type, 512, self.num_layers, stride=2)
 
         self.avg_pool = nn.AvgPool2d(7, stride=1)
         self.fc = nn.Linear(512 * self.block_type.expansion, 1000)
@@ -85,8 +82,7 @@ class ResNet(nn.Module):
         # https://arxiv.org/pdf/1709.02956v1.pdf
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(
-                    m.weight, mode="fan_out", nonlinearity="relu")
+                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
             elif isinstance(m, nn.BatchNorm2d):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
@@ -95,8 +91,13 @@ class ResNet(nn.Module):
         downsample = None
         if stride != 1 or self.inner != planes * block.expansion:
             downsample = nn.Sequential(
-                nn.Conv2d(self.inner, planes * block.expansion,
-                          kernel_size=1, stride=stride, bias=False),
+                nn.Conv2d(
+                    self.inner,
+                    planes * block.expansion,
+                    kernel_size=1,
+                    stride=stride,
+                    bias=False,
+                ),
                 nn.BatchNorm2d(planes * block.expansion),
             )
 
