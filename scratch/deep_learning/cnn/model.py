@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 
 class ConvNet(nn.Module):
-    def __init__(self, num_classes):
+    def __init__(self, num_classes: int):
         super(ConvNet, self).__init__()
 
         self.conv_1 = nn.Conv2d(

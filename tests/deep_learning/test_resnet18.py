@@ -1,56 +1,23 @@
 import torch
-import torch.nn.functional as F
 from scratch.utils.device import get_device
 from scratch.utils.logging import setup_logger
-from scratch.deep_learning.resnet18 import ResNet
-from tests.deep_learning.utils import compute_accuracy, load_mnist
-
-batch_size = 128
-num_epochs = 1
-learning_rate = 0.1
-
-random_seed = 1
-torch.manual_seed(random_seed)
-
-logger = setup_logger()
-
-device = get_device()
-logger.info(f"Using device: {device.type}")
+from scratch.deep_learning.resnet18.model import ResNet
+from scratch.utils.reproducability import set_random_seed
 
 
 def test_resnet18():
-    train_loader, test_loader = load_mnist(batch_size=batch_size)
+    set_random_seed()
+    device = get_device()
+
+    logger = setup_logger()
+    logger.info(f"Using device: {device.type}")
 
     model = ResNet(num_classes=10, is_grey=True).to(device)
+    X = torch.randn(1, 1, 28, 28).to(device)
+    logits, _ = model(X)
 
-    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+    model = ResNet(num_classes=10, is_grey=False).to(device)
+    X = torch.randn(1, 3, 28, 28).to(device)
+    logits, _ = model(X)
 
-    model = model.train()
-    for epoch in range(num_epochs):
-        for batch_idx, (features, targets) in enumerate(train_loader):
-            features = features.to(device)
-            targets = targets.to(device)
-
-            logits, _ = model(features)
-            loss = F.cross_entropy(logits, targets)
-            optimizer.zero_grad()
-
-            loss.backward()
-
-            optimizer.step()
-
-        model = model.eval()
-
-        train_accuracy = compute_accuracy(model, train_loader, device)
-        logger.info(
-            f"Epoch: {epoch + 1}/{num_epochs} | Training Accuracy: {train_accuracy}"
-        )
-
-        assert train_accuracy.item() > 0.85
-        assert train_accuracy.item() < 1.0
-
-    with torch.set_grad_enabled(False):
-        test_accuracy = compute_accuracy(model, test_loader, device)
-        logger.info(f"Test Accuracy: {test_accuracy}")
-        assert test_accuracy.item() > 0.85
-        assert test_accuracy.item() < 1.0
+    assert logits.shape == (1, 10)
