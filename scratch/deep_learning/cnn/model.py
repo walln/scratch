@@ -1,44 +1,57 @@
-from torch import nn
-import torch.nn.functional as F
-
-# TODO: Currently only supports 28x28 images for MNIST
-# Update to support dynamic image sizes
+from flax import linen as nn
 
 
-class ConvNet(nn.Module):
-    def __init__(self, num_classes: int):
-        super(ConvNet, self).__init__()
+class CNNOld(nn.Module):
+    """
+    A simple CNN model for image classification.
+    """
 
-        self.conv_1 = nn.Conv2d(
-            in_channels=1, out_channels=8, kernel_size=(3, 3), stride=(1, 1), padding=1
-        )
+    @nn.compact
+    def __call__(self, x, train=True, **kwargs):
+        # Convolutional layer: inherently supports batching
+        x = nn.Conv(features=32, kernel_size=(3, 3))(x)
+        x = nn.relu(x)
+        x = nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2))
 
-        self.pool_1 = nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2), padding=0)
-        self.conv_2 = nn.Conv2d(
-            in_channels=8, out_channels=16, kernel_size=(3, 3), stride=(1, 1), padding=1
-        )
+        # Another convolutional layer
+        x = nn.Conv(features=64, kernel_size=(3, 3))(x)
+        x = nn.relu(x)
+        x = nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2))
 
-        self.pool_2 = nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2), padding=0)
+        x = x.reshape((-1, x.shape[-3] * x.shape[-2] * x.shape[-1]))
 
-        self.linear_1 = nn.Linear(49 * 16, num_classes)
+        # Dense layers: also inherently support batching
+        x = nn.Dense(features=256)(x)
+        x = nn.relu(x)
+        x = nn.Dense(features=10)(x)
 
-        # Intialize weights with Xavier Uniform and zero bias
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
-                nn.init.xavier_uniform_(m.weight)
-                m.bias.data.zero_()
-                if m.bias is not None:
-                    m.bias.detach().zero_()
+        return x
 
-    def forward(self, x):
-        out = self.conv_1(x)
-        out = F.relu(out)
-        out = self.pool_1(out)
 
-        out = self.conv_2(out)
-        out = F.relu(out)
-        out = self.pool_2(out)
+class CNN(nn.Module):
+    """
+    A simple CNN model for image classification.
+    """
 
-        logits = self.linear_1(out.view(-1, 7 * 7 * 16))
-        probas = F.softmax(logits, dim=1)
-        return logits, probas
+    num_classes: int
+
+    @nn.compact
+    def __call__(self, x, train=True, **kwargs):
+        # Convolutional layer: inherently supports batching
+        x = nn.Conv(features=32, kernel_size=(3, 3))(x)
+        x = nn.relu(x)
+        x = nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2))
+
+        # Another convolutional layer
+        x = nn.Conv(features=64, kernel_size=(3, 3))(x)
+        x = nn.relu(x)
+        x = nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2))
+
+        x = x.reshape((-1, x.shape[-3] * x.shape[-2] * x.shape[-1]))
+
+        # Dense layers: also inherently support batching
+        x = nn.Dense(features=256)(x)
+        x = nn.relu(x)
+        x = nn.Dense(features=self.num_classes)(x)
+
+        return x
