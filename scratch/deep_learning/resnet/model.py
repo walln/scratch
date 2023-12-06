@@ -1,13 +1,6 @@
 from functools import partial
-from typing import Callable, Sequence
+from typing import Callable, Sequence, Tuple, Any
 import flax.linen as nn
-from typing import Any
-import jax.numpy as jnp
-
-from functools import partial
-from typing import Any, Callable, Sequence, Tuple
-
-from flax import linen as nn
 import jax.numpy as jnp
 
 ModuleDef = Any
