@@ -1,11 +1,12 @@
-import jax
+from typing import List, Optional
 
-import optax
-from scratch.deep_learning.trainer.trainer_module import TrainState, TrainerModule
+import jax
 import jax.numpy as jnp
+import optax
 from flax import linen as nn
-from typing import Optional, List
 from optax import GradientTransformation
+
+from scratch.deep_learning.trainer.trainer_module import TrainerModule, TrainState
 
 
 class ImageClassificationBatch:

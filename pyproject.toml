@@ -6,6 +6,7 @@ authors = ["Nick <46641379+walln@users.noreply.github.com>"]
 license = "MIT"
 readme = "README.md"
 
+
 [tool.poetry.dependencies]
 python = "^3.9"
 jaxlib =[
@@ -25,6 +26,7 @@ jax-dataloader = "^0.0.5"
 datasets = "^2.15.0"
 optax = "^0.1.7"
 tqdm = "^4.66.1"
+jax-tqdm = "^0.1.2"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.1.7"
@@ -46,3 +48,21 @@ priority = "supplemental"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+src = ["scratch", "tests"]
+
+# TODO: docstring checks and additional rules
+[tool.ruff.lint]
+select = [
+    # Pyflakes
+    "F",
+    # Pycodestyle
+    "E",
+    "W",
+    # isort
+    "I"
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["scratch"]

@@ -1,6 +1,6 @@
+import torch
 from torch.backends.mps import is_available as mps_is_available
 from torch.cuda import is_available as cuda_is_available
-import torch
 
 
 def get_device():

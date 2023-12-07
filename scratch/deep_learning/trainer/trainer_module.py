@@ -1,16 +1,16 @@
-from flax import linen as nn
+from typing import Any, Dict, List, Optional, Tuple
+
 import flax
-from loguru import logger
-from optax import GradientTransformation
 import jax.numpy as jnp
-from jax import random
-from typing import Any, Dict, Optional, List, Tuple
-from flax.training import train_state
 import optax
-from optax import adam
+from flax import linen as nn
+from flax.training import train_state
+from jax import random
+from loguru import logger
+from optax import GradientTransformation, adam
 from tqdm import tqdm
-from scratch.datasets.dataset import Dataset
-from scratch.datasets.dataset import Dataloader
+
+from scratch.datasets.dataset import Dataloader, Dataset
 
 
 class TrainState(train_state.TrainState):
@@ -124,9 +124,9 @@ class TrainerModule:
             # Loss will always be in the metrics
             # If accuracy is in the metrics, then add it to the progress bar as well
             if "accuracy" in step_metrics:
-                batch_monitor.set_postfix_str(
-                    f"Accuracy: {step_metrics['accuracy']:.4f} Loss: {step_metrics['loss']:.4f}"
-                )
+                accuracy_str = f"Accuracy: {step_metrics['accuracy']:.4f}"
+                loss_str = f"Loss: {step_metrics['loss']:.4f}"
+                batch_monitor.set_postfix_str(f"{accuracy_str} {loss_str}")
             else:
                 batch_monitor.set_postfix_str(f"Loss: {step_metrics['loss']:.4f}")
 

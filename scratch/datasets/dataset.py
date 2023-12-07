@@ -1,10 +1,15 @@
 from dataclasses import dataclass
-from typing import Optional
-from datasets import load_dataset
+from typing import Generic, Optional, TypeVar
+
+from jax.numpy import ndarray
 from jax_dataloader import DataLoader as JaxDataLoader
 
+from datasets import load_dataset
 
-class Dataloader:
+T = TypeVar("T")
+
+
+class Dataloader(Generic[T]):
     def __init__(self, loader, transform):
         self.dataloader = loader
         self.transform = transform
@@ -13,7 +18,7 @@ class Dataloader:
     def __iter__(self):
         return self
 
-    def __next__(self):
+    def __next__(self) -> T:
         try:
             batch = next(self.iterator)
             transformed_batch = self.transform(batch)
@@ -24,6 +29,11 @@ class Dataloader:
 
     def __len__(self):
         return len(self.dataloader)
+
+
+class ImageClassificationBatch:
+    inputs: ndarray
+    targets: ndarray
 
 
 def mnist_dataset(batch_size=32, shuffle=True):
@@ -48,18 +58,18 @@ def mnist_dataset(batch_size=32, shuffle=True):
     train_loader = Dataloader(train_loader, transform_colnames)
     test_loader = Dataloader(test_loader, transform_colnames)
 
-    return Dataset(
+    return Dataset[ImageClassificationBatch](
         batch_size=batch_size, train=train_loader, test=test_loader, validation=None
     )
 
 
 @dataclass
-class Dataset:
+class Dataset(Generic[T]):
     """
     Data module class that contains loaders
     """
 
     batch_size: int
-    train: Dataloader
-    test: Optional[Dataloader]
-    validation: Optional[Dataloader]
+    train: Dataloader[T]
+    test: Optional[Dataloader[T]]
+    validation: Optional[Dataloader[T]]

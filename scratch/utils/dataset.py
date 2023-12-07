@@ -1,6 +1,5 @@
-from torchvision import datasets
-from torchvision import transforms
 from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
 
 
 def load_mnist(batch_size: int = 128):

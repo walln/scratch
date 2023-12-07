@@ -1,14 +1,14 @@
 from sklearn.datasets import make_classification, make_regression
-from sklearn.metrics import accuracy_score, mean_squared_error, r2_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 from scratch.supervised.regression import (
     ElasticNet,
+    LassoRegression,
     LinearRegression,
     LogisticRegression,
     RidgeRegression,
-    LassoRegression,
 )
 from scratch.utils.logging import setup_logger
 

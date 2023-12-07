@@ -1,19 +1,18 @@
 from functools import partial
-from typing import Callable, Sequence, Tuple, Any
-import flax.linen as nn
+from typing import Any, Callable, Sequence, Tuple
+
 import jax.numpy as jnp
+from flax import linen as nn
 
 ModuleDef = Any
 
 
-# Norms are not supported yet because the trainstate requires a mutable reference to the batchnorm in the train loop
-# this requires major refactoring of the trainer module
 class ResNetBlock(nn.Module):
     """ResNet block."""
 
     filters: int
     conv: ModuleDef
-    # norm: ModuleDef
+    norm: ModuleDef
     act: Callable
     strides: Tuple[int, int] = (1, 1)
 
@@ -24,16 +23,16 @@ class ResNetBlock(nn.Module):
     ):
         residual = x
         y = self.conv(self.filters, (3, 3), self.strides)(x)
-        # y = self.norm()(y)
+        y = self.norm()(y)
         y = self.act(y)
         y = self.conv(self.filters, (3, 3))(y)
-        # y = self.norm(scale_init=nn.initializers.zeros_init())(y)
+        y = self.norm(scale_init=nn.initializers.zeros_init())(y)
 
         if residual.shape != y.shape:
             residual = self.conv(self.filters, (1, 1), self.strides, name="conv_proj")(
                 residual
             )
-            # residual = self.norm(name="norm_proj")(residual)
+            residual = self.norm(name="norm_proj")(residual)
 
         return self.act(residual + y)
 
@@ -43,7 +42,7 @@ class BottleneckResNetBlock(nn.Module):
 
     filters: int
     conv: ModuleDef
-    # norm: ModuleDef
+    norm: ModuleDef
     act: Callable
     strides: Tuple[int, int] = (1, 1)
 
@@ -51,19 +50,19 @@ class BottleneckResNetBlock(nn.Module):
     def __call__(self, x):
         residual = x
         y = self.conv(self.filters, (1, 1))(x)
-        # y = self.norm()(y)
+        y = self.norm()(y)
         y = self.act(y)
         y = self.conv(self.filters, (3, 3), self.strides)(y)
-        # y = self.norm()(y)
+        y = self.norm()(y)
         y = self.act(y)
         y = self.conv(self.filters * 4, (1, 1))(y)
-        # y = self.norm(scale_init=nn.initializers.zeros_init())(y)
+        y = self.norm(scale_init=nn.initializers.zeros_init())(y)
 
         if residual.shape != y.shape:
             residual = self.conv(
                 self.filters * 4, (1, 1), self.strides, name="conv_proj"
             )(residual)
-            # residual = self.norm(name="norm_proj")(residual)
+            residual = self.norm(name="norm_proj")(residual)
 
         return self.act(residual + y)
 
@@ -82,14 +81,14 @@ class ResNet(nn.Module):
     @nn.compact
     def __call__(self, x, train: bool = True):
         conv = partial(self.conv, use_bias=False, dtype=self.dtype)
-        # norm = partial(
-        #     nn.BatchNorm,
-        #     use_running_average=not train,
-        #     momentum=0.9,
-        #     epsilon=1e-5,
-        #     dtype=self.dtype,
-        #     axis_name="batch",
-        # )
+        norm = partial(
+            nn.BatchNorm,
+            use_running_average=not train,
+            momentum=0.9,
+            epsilon=1e-5,
+            dtype=self.dtype,
+            axis_name="batch",
+        )
 
         x = conv(
             self.num_filters,
@@ -98,7 +97,7 @@ class ResNet(nn.Module):
             padding=[(3, 3), (3, 3)],
             name="conv_init",
         )(x)
-        # x = norm(name="bn_init")(x)
+        x = norm(name="bn_init")(x)
         x = nn.relu(x)
         x = nn.max_pool(x, (3, 3), strides=(2, 2), padding="SAME")
         for i, block_size in enumerate(self.stage_sizes):
@@ -108,7 +107,7 @@ class ResNet(nn.Module):
                     self.num_filters * 2**i,
                     strides=strides,
                     conv=conv,
-                    # norm=norm,
+                    norm=norm,
                     act=self.act,
                 )(x)
         x = jnp.mean(x, axis=(1, 2))
@@ -123,3 +122,15 @@ ResNet50 = partial(ResNet, stage_sizes=[3, 4, 6, 3], block_cls=BottleneckResNetB
 ResNet101 = partial(ResNet, stage_sizes=[3, 4, 23, 3], block_cls=BottleneckResNetBlock)
 ResNet152 = partial(ResNet, stage_sizes=[3, 8, 36, 3], block_cls=BottleneckResNetBlock)
 ResNet200 = partial(ResNet, stage_sizes=[3, 24, 36, 3], block_cls=BottleneckResNetBlock)
+
+
+ResNet18Local = partial(
+    ResNet, stage_sizes=[2, 2, 2, 2], block_cls=ResNetBlock, conv=nn.ConvLocal
+)
+
+
+# Used for testing only.
+_ResNet1 = partial(ResNet, stage_sizes=[1], block_cls=ResNetBlock)
+_ResNet1Local = partial(
+    ResNet, stage_sizes=[1], block_cls=ResNetBlock, conv=nn.ConvLocal
+)
