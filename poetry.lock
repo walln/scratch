@@ -449,6 +449,22 @@ files = [
 ]
 
 [[package]]
+name = "equinox"
+version = "0.11.2"
+description = "Elegant easy-to-use neural networks in JAX."
+optional = false
+python-versions = "~=3.9"
+files = [
+    {file = "equinox-0.11.2-py3-none-any.whl", hash = "sha256:727129a2e74ae21870d151526c71a8983125a658d77a100318f3096c4123b9dc"},
+    {file = "equinox-0.11.2.tar.gz", hash = "sha256:fc1931fced54ac4d938b701709ffb9d6fda0cdd631d9899ffaccdca90babb8cc"},
+]
+
+[package.dependencies]
+jax = ">=0.4.13"
+jaxtyping = ">=0.2.20"
+typing-extensions = ">=4.5.0"
+
+[[package]]
 name = "etils"
 version = "1.5.2"
 description = "Collection of common python utils"
@@ -946,6 +962,21 @@ cuda12-pip = ["nvidia-cublas-cu12", "nvidia-cuda-cupti-cu12", "nvidia-cuda-nvcc-
 type = "legacy"
 url = "https://jorenham.github.io/jax_pep503"
 reference = "jorenham/jax_pep503"
+
+[[package]]
+name = "jaxtyping"
+version = "0.2.24"
+description = "Type annotations and runtime checking for shape and dtype of JAX arrays, and PyTrees."
+optional = false
+python-versions = "~=3.9"
+files = [
+    {file = "jaxtyping-0.2.24-py3-none-any.whl", hash = "sha256:b0e90891bbee882d5d3487023d132227d45bdaca3e72937d491b74334f148826"},
+]
+
+[package.dependencies]
+numpy = ">=1.20.0"
+typeguard = ">=2.13.3,<3"
+typing-extensions = ">=3.7.4.1"
 
 [[package]]
 name = "joblib"
@@ -2330,6 +2361,21 @@ slack = ["slack-sdk"]
 telegram = ["requests"]
 
 [[package]]
+name = "typeguard"
+version = "2.13.3"
+description = "Run-time type checker for Python"
+optional = false
+python-versions = ">=3.5.3"
+files = [
+    {file = "typeguard-2.13.3-py3-none-any.whl", hash = "sha256:5e3e3be01e887e7eafae5af63d1f36c849aaa94e3a0112097312aabfa16284f1"},
+    {file = "typeguard-2.13.3.tar.gz", hash = "sha256:00edaa8da3a133674796cf5ea87d9f4b4c367d77476e185e80251cc13dfbb8c4"},
+]
+
+[package.extras]
+doc = ["sphinx-autodoc-typehints (>=1.2.0)", "sphinx-rtd-theme"]
+test = ["mypy", "pytest", "typing-extensions"]
+
+[[package]]
 name = "typing-extensions"
 version = "4.8.0"
 description = "Backported and Experimental Type Hints for Python 3.8+"
@@ -2639,4 +2685,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "1255c2970b8e30768b955c768cd85cf89a3e3ef3f9dad27ca89deabc5c1ca6c1"
+content-hash = "92c8e4bd342624d692de0854a10e6dba7e7129e6d40c7b0bfc95b575140115dc"
