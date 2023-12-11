@@ -1,16 +1,23 @@
+"""A simple CNN model for image classification."""
 from flax import linen as nn
 from flax.linen.initializers import kaiming_normal
 
 
 class CNN(nn.Module):
-    """
-    A simple CNN model for image classification.
-    """
+    """A simple CNN model for image classification."""
 
     num_classes: int
 
     @nn.compact
     def __call__(self, x, train=True, **kwargs):
+        """Forward pass of the model.
+
+        Args:
+        ----
+            x: the input image
+            train: whether to run in training mode
+            kwargs: additional keyword arguments
+        """
         x = nn.Conv(features=32, kernel_size=(3, 3), kernel_init=kaiming_normal())(x)
         x = nn.relu(x)
         x = nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2))

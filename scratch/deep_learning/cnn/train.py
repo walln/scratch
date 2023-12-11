@@ -1,3 +1,4 @@
+"""Train a CNN on MNIST using Flax."""
 from dataclasses import dataclass
 from functools import partial
 from typing import Dict
@@ -16,13 +17,13 @@ from scratch.deep_learning.cnn import CNN
 
 
 class TrainState(train_state.TrainState):
-    pass
+    """Custom TrainState class for Flax."""
+
+    ...
 
 
 def create_train_state(rng: jax.random.PRNGKey, learning_rate: float, momentum: float):
-    """
-    Creates initial `TrainState`.
-    """
+    """Create initial `TrainState`."""
     model = CNN(num_classes=10)
     variables = model.init(rng, jnp.ones([1, 28, 28, 1]))
     params = variables["params"]
@@ -32,9 +33,7 @@ def create_train_state(rng: jax.random.PRNGKey, learning_rate: float, momentum: 
 
 @dataclass
 class TrainEvaluateConfig:
-    """
-    Configuration for training and evaluation.
-    """
+    """Configuration for training and evaluation."""
 
     num_epochs: int
     batch_size: int
@@ -45,6 +44,14 @@ class TrainEvaluateConfig:
 
 @jit
 def train_step(state: TrainState, batch: Dict[str, jnp.ndarray]):
+    """Train for a single step.
+
+    Args:
+    ----
+        state: the current training state
+    batch: the batch of data to train on
+    """
+
     def loss_fn(params):
         logits = state.apply_fn({"params": params}, batch["image"])
         one_hot_labels = jax.nn.one_hot(batch["label"], logits.shape[1])
@@ -67,6 +74,13 @@ def train_step(state: TrainState, batch: Dict[str, jnp.ndarray]):
 
 @jit
 def eval_step(state: TrainState, batch: Dict[str, jnp.ndarray]):
+    """Evaluate for a single step.
+
+    Args:
+    ----
+        state: the current training state
+    batch: the batch of data to evaluate on
+    """
     variables = {"params": state.params}
     logits = state.apply_fn(variables, batch["image"], train=False, mutable=False)
     one_hot_labels = jax.nn.one_hot(batch["label"], logits.shape[1])
@@ -79,6 +93,12 @@ def eval_step(state: TrainState, batch: Dict[str, jnp.ndarray]):
 
 
 def train_and_evaluate(config: TrainEvaluateConfig):
+    """Train and evaluate a CNN on MNIST.
+
+    Args:
+    ----
+        config: the configuration for training and evaluation
+    """
     num_devices = jax.device_count()
     dataset = mnist_dataset(batch_size=config.batch_size, shuffle=True)
     train_dataloader = dataset.train

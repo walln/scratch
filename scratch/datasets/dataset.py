@@ -67,12 +67,20 @@ def mnist_dataset(batch_size=32, shuffle=True):
 
     def transform_colnames(batch):
         # change shape from (batch_size, 28, 28) to (batch_size, 28, 28, 1)
-        batch["image"] = batch["image"].reshape(
-            batch["image"].shape[0], batch["image"].shape[1], batch["image"].shape[2], 1
+        batch["image"] = (
+            batch["image"]
+            .reshape(
+                batch["image"].shape[0],
+                batch["image"].shape[1],
+                batch["image"].shape[2],
+                1,
+            )
+            .to_numpy()
         )
 
         # Scale pixel values from range [0, 255] to [0, 1]
         batch["image"] = batch["image"].astype(float) / 255.0
+        batch["label"] = batch["label"].to_numpy()
         return (batch["image"], batch["label"])
 
     train_loader = Dataloader(train_loader, transform_colnames)
