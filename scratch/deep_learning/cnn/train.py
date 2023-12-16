@@ -10,10 +10,11 @@ import optax
 from flax.training import train_state
 from flax.training.early_stopping import EarlyStopping
 from jax import jit
+from jaxtyping import Array
 from tqdm import tqdm
 
 from scratch.datasets.dataset import mnist_dataset
-from scratch.deep_learning.cnn import CNN
+from scratch.deep_learning.cnn.model import CNN
 
 
 class TrainState(train_state.TrainState):
@@ -22,7 +23,7 @@ class TrainState(train_state.TrainState):
     ...
 
 
-def create_train_state(rng: jax.random.PRNGKey, learning_rate: float, momentum: float):
+def create_train_state(rng: Array, learning_rate: float, momentum: float):
     """Create initial `TrainState`."""
     model = CNN(num_classes=10)
     variables = model.init(rng, jnp.ones([1, 28, 28, 1]))
@@ -125,7 +126,8 @@ def train_and_evaluate(config: TrainEvaluateConfig):
         )
         train_accuracy = jnp.array([])
         train_loss = jnp.array([])
-        for image, label in train_loader:
+        for batch in train_loader:
+            image, label = batch.unpack()
             if image.shape[0] % num_devices != 0:
                 # Batch size must be divisible by the number of devices
                 continue
@@ -158,7 +160,8 @@ def train_and_evaluate(config: TrainEvaluateConfig):
         )
         validation_accuracy = jnp.array([])
         validation_loss = jnp.array([])
-        for image, label in validation_loader:
+        for batch in validation_loader:
+            image, label = batch.unpack()
             if image.shape[0] % num_devices != 0:
                 # Batch size must be divisible by the number of devices
                 continue

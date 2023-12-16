@@ -1,14 +1,19 @@
-from dataclasses import dataclass  # noqa: D100, I001
+"""Custom datasets for use with the scratch framework."""
+import dataclasses
 from typing import Generic, Optional, TypeVar
 
 import jax
+import numpy as np
+import torch.nn.functional as F
+from torch.utils.data import DataLoader
+from torch.utils.data.dataloader import default_collate
+
 from datasets import load_dataset
-from jax_dataloader import DataLoader as JaxDataLoader
 
 T = TypeVar("T")
 
 
-class Dataloader(Generic[T]):
+class ScratchDataLoader(Generic[T]):
     """Wrapper around DataLoader that applies a transform to the batch."""
 
     def __init__(self, loader, transform):
@@ -42,11 +47,21 @@ class Dataloader(Generic[T]):
         return len(self.dataloader)
 
 
+@dataclasses.dataclass
 class ImageClassificationBatch:
     """Batch of images and labels."""
 
     inputs: jax.numpy.ndarray
     targets: jax.numpy.ndarray
+
+    def unpack(self):
+        """Return a tuple of inputs and targets for unpacking.
+
+        Returns:
+        -------
+        Tuple of inputs and targets.
+        """
+        return self.inputs, self.targets
 
 
 def mnist_dataset(batch_size=32, shuffle=True):
@@ -57,13 +72,10 @@ def mnist_dataset(batch_size=32, shuffle=True):
         batch_size: the batch size
         shuffle: whether to shuffle the dataset
     """
-    dataset = load_dataset("mnist")
-    train_loader = JaxDataLoader(
-        dataset["train"], "jax", batch_size=batch_size, shuffle=shuffle
-    )
-    test_loader = JaxDataLoader(
-        dataset["test"], "jax", batch_size=batch_size, shuffle=shuffle
-    )
+    train_data = load_dataset("mnist", split="train")
+    test_data = load_dataset("mnist", split="test")
+    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=shuffle)  # type: ignore - PyTorch types are incompatible
+    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=shuffle)  # type: ignore - PyTorch types are incompatible
 
     def transform_colnames(batch):
         # change shape from (batch_size, 28, 28) to (batch_size, 28, 28, 1)
@@ -83,8 +95,8 @@ def mnist_dataset(batch_size=32, shuffle=True):
         batch["label"] = batch["label"].to_numpy()
         return (batch["image"], batch["label"])
 
-    train_loader = Dataloader(train_loader, transform_colnames)
-    test_loader = Dataloader(test_loader, transform_colnames)
+    train_loader = ScratchDataLoader(train_loader, transform_colnames)
+    test_loader = ScratchDataLoader(test_loader, transform_colnames)
 
     return Dataset[ImageClassificationBatch](
         batch_size=batch_size, train=train_loader, test=test_loader, validation=None
@@ -100,31 +112,93 @@ def cifar10_dataset(batch_size=32, shuffle=True):
         shuffle: whether to shuffle the dataset
     """
     dataset = load_dataset("cifar10")
-    train_loader = JaxDataLoader(
-        dataset["train"], "jax", batch_size=batch_size, shuffle=shuffle
-    )
-    test_loader = JaxDataLoader(
-        dataset["test"], "jax", batch_size=batch_size, shuffle=shuffle
-    )
+    train_loader = DataLoader(dataset["train"], batch_size=batch_size, shuffle=shuffle)  # type: ignore - PyTorch types are incompatible
+    test_loader = DataLoader(dataset["test"], batch_size=batch_size, shuffle=shuffle)  # type: ignore - PyTorch types are incompatible
 
     def transform_colnames(batch):
         # Scale pixel values from range [0, 255] to [0, 1]
         batch["image"] = batch["image"].astype(float) / 255.0
         return (batch["image"], batch["label"])
 
-    train_loader = Dataloader(train_loader, transform_colnames)
-    test_loader = Dataloader(test_loader, transform_colnames)
+    train_loader = ScratchDataLoader(train_loader, transform_colnames)
+    test_loader = ScratchDataLoader(test_loader, transform_colnames)
 
     return Dataset[ImageClassificationBatch](
         batch_size=batch_size, train=train_loader, test=test_loader, validation=None
     )
 
 
-@dataclass
+def tiny_imagenet_dataset(batch_size=16, shuffle=False):
+    """Load the Tiny ImageNet dataset and return a Dataset object.
+
+    Args:
+    ----
+        batch_size: the batch size
+        shuffle: whether to shuffle the dataset
+    """
+    dataset = load_dataset("zh-plus/tiny-imagenet").with_format("torch")
+
+    def custom_collate(batch):
+        processed_batch = []
+        for item in batch:
+            image, label = item["image"], item["label"]
+
+            # Ensure that the image is a 3-channel image
+            if image.ndim == 2:
+                # Add a channel dimension and convert to [H, W, C] by repeating
+                # the channel
+                image = image.unsqueeze(-1).repeat(1, 1, 3)
+
+            # Convert to [H, W, C] if the image is in [C, H, W] format
+            elif image.shape[0] == 3:
+                image = image.permute(1, 2, 0)  # Reorder dimensions to [H, W, C]
+
+            # If already in [H, W, C] but grayscale
+            elif image.shape[-1] == 1:
+                image = image.repeat(1, 1, 3)  # Repeat the channel 3 times
+
+            processed_batch.append((image, label))
+
+        # Use the default collate to stack the processed batch
+        default_collate(processed_batch)
+
+    train_loader = DataLoader(
+        dataset["train"],  # type: ignore - PyTorch types are incompatible
+        batch_size=batch_size,
+        shuffle=shuffle,
+        drop_last=True,
+        collate_fn=custom_collate,
+    )
+    test_loader = DataLoader(
+        dataset["valid"],  # type: ignore - PyTorch types are incompatible
+        batch_size=batch_size,
+        shuffle=shuffle,
+        drop_last=True,
+        collate_fn=custom_collate,
+    )
+
+    def transform_colnames(batch):
+        image, label = batch
+        # Scale pixel values from range [0, 255] to [0, 1]
+        image = image / 255.0
+        label = F.one_hot(label, num_classes=200)
+        image = image.numpy().astype(np.float32)
+        label = label.numpy().astype(np.float32)
+        return (image, label)
+
+    train_loader = ScratchDataLoader(train_loader, transform_colnames)
+    test_loader = ScratchDataLoader(test_loader, transform_colnames)
+
+    return Dataset[ImageClassificationBatch](
+        batch_size=batch_size, train=train_loader, test=test_loader, validation=None
+    )
+
+
+@dataclasses.dataclass
 class Dataset(Generic[T]):
     """Data module class that contains loaders."""
 
     batch_size: int
-    train: Dataloader[T]
-    test: Optional[Dataloader[T]]
-    validation: Optional[Dataloader[T]]
+    train: ScratchDataLoader[T]
+    test: Optional[ScratchDataLoader[T]]
+    validation: Optional[ScratchDataLoader[T]]
