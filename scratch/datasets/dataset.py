@@ -1,58 +1,29 @@
 """Custom datasets for use with the scratch framework."""
 import dataclasses
-from typing import Generic, Optional, TypeVar
+from typing import Any, Callable, Generic, Iterator, Optional, Tuple, TypeVar
 
-import jax
 import numpy as np
 import torch.nn.functional as F
+from jaxtyping import Array
 from torch.utils.data import DataLoader
 from torch.utils.data.dataloader import default_collate
 
 from datasets import load_dataset
 
 T = TypeVar("T")
-
-
-class ScratchDataLoader(Generic[T]):
-    """Wrapper around DataLoader that applies a transform to the batch."""
-
-    def __init__(self, loader, transform):
-        """Initialize the dataloader.
-
-        Args:
-        ----
-            loader: the dataloader to wrap
-        transform: the transform to apply to the batch
-        """
-        self.dataloader = loader
-        self.transform = transform
-        self.iterator = iter(self.dataloader)
-
-    def __iter__(self):
-        """Return the iterator over the dataloader."""
-        return self
-
-    def __next__(self) -> T:
-        """Return the next batch."""
-        try:
-            batch = next(self.iterator)
-            transformed_batch = self.transform(batch)
-            return transformed_batch
-        except StopIteration:
-            self.iterator = iter(self.dataloader)
-            raise StopIteration
-
-    def __len__(self):
-        """Return the number of batches in the dataloader."""
-        return len(self.dataloader)
+B = TypeVar("B")
 
 
 @dataclasses.dataclass
-class ImageClassificationBatch:
-    """Batch of images and labels."""
+class BatchData(Generic[T]):
+    """Wrapper around a batch of data."""
 
-    inputs: jax.numpy.ndarray
-    targets: jax.numpy.ndarray
+    data: T
+
+
+@dataclasses.dataclass
+class CustomImageClassificationBatch(BatchData[Tuple[Array, Array]]):
+    """Batch of images and labels."""
 
     def unpack(self):
         """Return a tuple of inputs and targets for unpacking.
@@ -61,7 +32,33 @@ class ImageClassificationBatch:
         -------
         Tuple of inputs and targets.
         """
-        return self.inputs, self.targets
+        return self.data
+
+
+class CustomDataLoader(Generic[B]):
+    """Custom DataLoader that applies a transformation to each batch."""
+
+    def __init__(self, loader: DataLoader, transform: Callable[[Any], B]):
+        """Create a CustomDataLoader.
+
+        Args:
+        ----
+            loader (DataLoader): The original DataLoader.
+            transform (Callable): The transformation function to apply to each batch.
+        """
+        self.loader = loader
+        self.transform = transform
+
+    def __iter__(self) -> Iterator[B]:
+        """Iterate over the DataLoader."""
+        for batch in self.loader:
+            # Apply the transformation and yield a BatchData instance
+            transformed_batch = self.transform(batch)
+            yield transformed_batch
+
+    def __len__(self):
+        """Return the number of batches."""
+        return len(self.loader)
 
 
 def mnist_dataset(batch_size=32, shuffle=True):
@@ -93,12 +90,16 @@ def mnist_dataset(batch_size=32, shuffle=True):
         # Scale pixel values from range [0, 255] to [0, 1]
         batch["image"] = batch["image"].astype(float) / 255.0
         batch["label"] = batch["label"].to_numpy()
-        return (batch["image"], batch["label"])
+        return CustomImageClassificationBatch(data=(batch["image"], batch["label"]))
 
-    train_loader = ScratchDataLoader(train_loader, transform_colnames)
-    test_loader = ScratchDataLoader(test_loader, transform_colnames)
+    train_loader = CustomDataLoader[CustomImageClassificationBatch](
+        loader=train_loader, transform=transform_colnames
+    )
+    test_loader = CustomDataLoader[CustomImageClassificationBatch](
+        loader=test_loader, transform=transform_colnames
+    )
 
-    return Dataset[ImageClassificationBatch](
+    return CustomDataset[CustomImageClassificationBatch](
         batch_size=batch_size, train=train_loader, test=test_loader, validation=None
     )
 
@@ -118,12 +119,16 @@ def cifar10_dataset(batch_size=32, shuffle=True):
     def transform_colnames(batch):
         # Scale pixel values from range [0, 255] to [0, 1]
         batch["image"] = batch["image"].astype(float) / 255.0
-        return (batch["image"], batch["label"])
+        return CustomImageClassificationBatch(data=(batch["image"], batch["label"]))
 
-    train_loader = ScratchDataLoader(train_loader, transform_colnames)
-    test_loader = ScratchDataLoader(test_loader, transform_colnames)
+    train_loader = CustomDataLoader[CustomImageClassificationBatch](
+        loader=train_loader, transform=transform_colnames
+    )
+    test_loader = CustomDataLoader[CustomImageClassificationBatch](
+        loader=test_loader, transform=transform_colnames
+    )
 
-    return Dataset[ImageClassificationBatch](
+    return CustomDataset[CustomImageClassificationBatch](
         batch_size=batch_size, train=train_loader, test=test_loader, validation=None
     )
 
@@ -160,7 +165,7 @@ def tiny_imagenet_dataset(batch_size=16, shuffle=False):
             processed_batch.append((image, label))
 
         # Use the default collate to stack the processed batch
-        default_collate(processed_batch)
+        return default_collate(processed_batch)
 
     train_loader = DataLoader(
         dataset["train"],  # type: ignore - PyTorch types are incompatible
@@ -177,28 +182,31 @@ def tiny_imagenet_dataset(batch_size=16, shuffle=False):
         collate_fn=custom_collate,
     )
 
-    def transform_colnames(batch):
+    def transform_colnames(batch) -> CustomImageClassificationBatch:
         image, label = batch
         # Scale pixel values from range [0, 255] to [0, 1]
         image = image / 255.0
         label = F.one_hot(label, num_classes=200)
         image = image.numpy().astype(np.float32)
         label = label.numpy().astype(np.float32)
-        return (image, label)
+        return CustomImageClassificationBatch(data=(image, label))
 
-    train_loader = ScratchDataLoader(train_loader, transform_colnames)
-    test_loader = ScratchDataLoader(test_loader, transform_colnames)
-
-    return Dataset[ImageClassificationBatch](
+    train_loader = CustomDataLoader[CustomImageClassificationBatch](
+        loader=train_loader, transform=transform_colnames
+    )
+    test_loader = CustomDataLoader[CustomImageClassificationBatch](
+        loader=test_loader, transform=transform_colnames
+    )
+    return CustomDataset[CustomImageClassificationBatch](
         batch_size=batch_size, train=train_loader, test=test_loader, validation=None
     )
 
 
 @dataclasses.dataclass
-class Dataset(Generic[T]):
+class CustomDataset(Generic[T]):
     """Data module class that contains loaders."""
 
     batch_size: int
-    train: ScratchDataLoader[T]
-    test: Optional[ScratchDataLoader[T]]
-    validation: Optional[ScratchDataLoader[T]]
+    train: CustomDataLoader[T]
+    test: Optional[CustomDataLoader[T]]
+    validation: Optional[CustomDataLoader[T]]
