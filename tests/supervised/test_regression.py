@@ -1,14 +1,15 @@
+"""Test regression models."""
 from sklearn.datasets import make_classification, make_regression
-from sklearn.metrics import accuracy_score, mean_squared_error, r2_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 from scratch.supervised.regression import (
     ElasticNet,
+    LassoRegression,
     LinearRegression,
     LogisticRegression,
     RidgeRegression,
-    LassoRegression,
 )
 from scratch.utils.logging import setup_logger
 
@@ -16,6 +17,7 @@ logger = setup_logger()
 
 
 def regression_dataset():
+    """Return a regression dataset."""
     X, y = make_regression(n_samples=2000, n_features=1, noise=20, random_state=1)
     # X, y = load_diabetes(return_X_y=True)
 
@@ -34,6 +36,7 @@ def regression_dataset():
 
 
 def test_linear_regression():
+    """Test the linear regression model."""
     X_train, X_test, y_train, y_test = regression_dataset()
 
     model = LinearRegression(n_iterations=75)
@@ -53,6 +56,7 @@ def test_linear_regression():
 
 
 def test_lasso_regression():
+    """Test the lasso regression model."""
     X_train, X_test, y_train, y_test = regression_dataset()
 
     model = LassoRegression(n_iterations=75)
@@ -72,6 +76,7 @@ def test_lasso_regression():
 
 
 def test_ridge_regression():
+    """Test the ridge regression model."""
     X_train, X_test, y_train, y_test = regression_dataset()
 
     model = RidgeRegression(n_iterations=75)
@@ -91,6 +96,7 @@ def test_ridge_regression():
 
 
 def test_elastic_net():
+    """Test the elastic net model."""
     X_train, X_test, y_train, y_test = regression_dataset()
 
     model = ElasticNet(n_iterations=5000)
@@ -110,6 +116,7 @@ def test_elastic_net():
 
 
 def test_logistic_regression():
+    """Test the logistic regression model."""
     X, y = make_classification(n_samples=2000, random_state=1)
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.4, shuffle=False

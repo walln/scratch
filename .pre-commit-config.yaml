@@ -1,16 +1,14 @@
 repos:
-  - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: "v0.1.0"
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: "v0.1.7"
     hooks:
       - id: ruff
-        args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
-        args: [--check]
   - repo: local
     hooks:
       - id: test
         name: test
-        entry: rye run pytest
+        entry: poetry run pytest
         language: system
         types: [python]
         pass_filenames: false

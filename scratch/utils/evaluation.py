@@ -1,7 +1,9 @@
+"""Evaluation utilities."""
 import torch
 
 
 def compute_accuracy(model, data_loader, device):
+    """Compute the accuracy of the model on a dataset."""
     correct_pred, num_examples = 0, 0
     for features, targets in data_loader:
         features = features.to(device)

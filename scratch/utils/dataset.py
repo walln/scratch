@@ -1,9 +1,10 @@
-from torchvision import datasets
-from torchvision import transforms
+"""Dataset utilities."""
 from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
 
 
 def load_mnist(batch_size: int = 128):
+    """Load the MNIST dataset."""
     train_dataset = datasets.MNIST(
         root="data", train=True, transform=transforms.ToTensor(), download=True
     )

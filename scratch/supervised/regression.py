@@ -1,3 +1,4 @@
+"""Regression models for supervised learning."""
 import math
 from enum import Enum
 from typing import Literal
@@ -12,67 +13,116 @@ logger = setup_logger()
 
 
 class L1_Regularization:
-    """
-    Regularization for Lasso Regression.
-    """
+    """Regularization for Lasso Regression."""
 
     def __init__(self, alpha):
+        """Initialize regularization parameter.
+
+        Args:
+        ----
+            alpha: regularization strength
+        """
         self.alpha = alpha
 
     def __call__(self, w):
+        """Calculate regularization term.
+
+        Args:
+        ----
+            w: weights
+        """
         return self.alpha * np.linalg.norm(w, 1)
 
     def grad(self, w):
+        """Calculate gradient of regularization term.
+
+        Args:
+        ----
+            w: weights
+        """
         return self.alpha * np.sign(w)
 
 
 class L2_Regularization:
-    """
-    Regularization for Ridge Regression.
-    """
+    """Regularization for Ridge Regression."""
 
     def __init__(self, alpha):
+        """Initialize regularization parameter.
+
+        Args:
+        ----
+            alpha: regularization strength
+        """
         self.alpha = alpha
 
     def __call__(self, w):
+        """Calculate regularization term.
+
+        Args:
+        ----
+        w: weights
+        """
         return self.alpha * 0.5 * w.T.dot(w)
 
     def grad(self, w):
+        """Calculate gradient of regularization term.
+
+        Args:
+        ----
+            w: weights
+        """
         return self.alpha * w
 
 
 class Elastic_Regularization:
-    """
-    Regularization for Elastic Net Regression using combined L1 and L2
-    regularization.
-    """
+    """Regularization for Elastic Net using combined L1 and L2 regularization."""
 
     def __init__(self, alpha, l1_ratio=0.5):
+        """Initialize regularization parameter.
+
+        Args:
+        ----
+            alpha: regularization strength
+            l1_ratio: ratio of L1 regularization
+        """
         self.alpha = alpha
         self.l1_ratio = l1_ratio
 
     def __call__(self, w):
+        """Calculate regularization term.
+
+        Args:
+        ----
+        w: weights
+        """
         l1_contr = self.l1_ratio * np.linalg.norm(w, 1)
         l2_contr = (1 - self.l1_ratio) * 0.5 * w.T.dot(w)
         return self.alpha * (l1_contr + l2_contr)
 
     def grad(self, w):
+        """Calculate gradient of regularization term.
+
+        Args:
+        ----
+        w: weights
+        """
         l1_contr = self.l1_ratio * np.sign(w)
         l2_contr = (1 - self.l1_ratio) * w
         return self.alpha * (l1_contr + l2_contr)
 
 
 class OptimizationMethod(str, Enum):
+    """Optimization methods for training regression models."""
+
     gradient_descent = "gradient_descent"
     least_squares = "least_squares"
 
 
 class Regression(object):
-    """
-    Base regression model that fits a relationship between scalars X and Y.
+    """Base regression model that fits a relationship between scalars X and Y.
 
-    Parameters:
-    -----------
+    Args:
+    ----
     n_iterations: float
         The number of training iterations the algorithm will take to attempt to
         optimize the model.
@@ -81,15 +131,34 @@ class Regression(object):
     """
 
     def __init__(self, n_iterations, learning_rate):
+        """Initialize model parameters.
+
+        Args:
+        ----
+            n_iterations: number of training iterations
+            learning_rate: step length for updating model parameters
+        """
         self.n_iterations = n_iterations
         self.learning_rate = learning_rate
 
     def init_weights(self, n_features):
-        """Randomly initialize the model weights between [-1/N, 1/N]"""
+        """Randomly initialize the model weights between [-1/N, 1/N].
+
+        Args:
+        ----
+        n_features: number of features
+        """
         lim = 1 / math.sqrt(n_features)
         self.w = np.random.uniform(-lim, lim, (n_features,))
 
     def fit(self, X, y):
+        """Fit the model to the training data.
+
+        Args:
+        ----
+            X: training data
+            y: target values
+        """
         # Add static bias term
         X = np.insert(X, 0, 1, axis=1)
         self.init_weights(n_features=X.shape[1])
@@ -106,6 +175,12 @@ class Regression(object):
             self.w -= self.learning_rate * grad_w
 
     def predict(self, X):
+        """Predict target values for the given data.
+
+        Args:
+        ----
+            X: data to predict target values for
+        """
         # Insert constant ones for bias weights
         X = np.insert(X, 0, 1, axis=1)
         y_pred = X.dot(self.w)
@@ -113,11 +188,10 @@ class Regression(object):
 
 
 class LinearRegression(Regression):
-    """
-    Linear model that fits a relationship between scalars X and Y.
+    """Linear model that fits a relationship between scalars X and Y.
 
-    Parameters:
-    -----------
+    Args:
+    ----
     n_iterations: float
         The number of training iterations the algorithm will take to attempt to
         optimize the model.
@@ -134,6 +208,14 @@ class LinearRegression(Regression):
         learning_rate=0.001,
         optimization=OptimizationMethod.least_squares,
     ):
+        """Initialize model parameters.
+
+        Args:
+        ----
+            n_iterations: number of training iterations
+            learning_rate: step length for updating model parameters
+            optimization: optimization method
+        """
         self.optimization = optimization
         # No regularization
         self.regularization = lambda x: 0
@@ -143,6 +225,13 @@ class LinearRegression(Regression):
         )
 
     def fit(self, X, y):
+        """Fit the model to the training data.
+
+        Args:
+        ----
+            X: training data
+        y: target values
+        """
         if self.optimization == OptimizationMethod.least_squares:
             # Add static bias term
             X = np.insert(X, 0, 1, axis=1)
@@ -156,75 +245,104 @@ class LinearRegression(Regression):
 
 
 class LassoRegression(Regression):
-    """
-    Linear regression model with regularization. This model tries to balance the fit of
+    """Linear regression model with regularization.
+
+    This model tries to balance the fit of
     the model with respect to the training data and the complexity of the model using
     l1 regularization.
 
-    Parameters:
-    -----------
-    learning_rate: float
-        The step length that will be used when updating the weights.
-    n_iterations: float
-        The number of training iterations the algorithm will take to attempt to optimize
-        the model.
-    reg_factor: float
-        The amount of regularization and feature shrinkage.
+    Args:
+    ----
+    learning_rate: The step length that will be used when updating the weights.
+    n_iterations: The number of training iterations the algorithm will take to attempt
+        to optimize the model.
+    reg_factor: The amount of regularization and feature shrinkage.
     """
 
     def __init__(self, learning_rate=0.001, n_iterations=1000, reg_factor=0.5):
+        """Initialize model parameters.
+
+        Args:
+        ----
+            n_iterations: number of training iterations
+            learning_rate: step length for updating model parameters
+            reg_factor: regularization strength
+        """
         self.regularization = L1_Regularization(alpha=reg_factor)
         super(LassoRegression, self).__init__(n_iterations, learning_rate)
 
     def fit(self, X, y):
+        """Fit the model to the training data.
+
+        Args:
+        ----
+            X: training data
+        y: target values
+        """
         super(LassoRegression, self).fit(X, y)
 
     def predict(self, X):
+        """Predict target values for the given data.
+
+        Args:
+        ----
+        X: data to predict target values for
+        """
         return super(LassoRegression, self).predict(X)
 
 
 class RidgeRegression(Regression):
-    """
-    Linear regression model with regularization. This model tries to balance the fit
+    """Linear regression model with regularization.
+
+    This model tries to balance the fit
     of the model with respect to the training data and the complexity of the model
     using l2 regularization.
 
-    Parameters:
-    -----------
-    learning_rate: float
-        The step length that will be used when updating the weights.
-    n_iterations: float
-        The number of training iterations the algorithm will take to attempt to
-        optimize the model.
-    reg_factor: float
-        The amount of regularization and feature shrinkage.
+    Args:
+    ----
+    learning_rate: The step length that will be used when updating the weights.
+    n_iterations: The number of training iterations the algorithm will take to attempt
+        to optimize the model.
+    reg_factor: The amount of regularization and feature shrinkage.
     """
 
     def __init__(self, learning_rate=0.001, n_iterations=1000, reg_factor=0.5):
+        """Initialize model parameters.
+
+        Args:
+        ----
+            n_iterations: number of training iterations
+            learning_rate: step length for updating model parameters
+            reg_factor: regularization strength
+        """
         self.regularization = L2_Regularization(alpha=reg_factor)
         super(RidgeRegression, self).__init__(n_iterations, learning_rate)
 
 
 class ElasticNet(Regression):
-    """
-    Regression using both L1 and L2 regularization.
+    """Regression using both L1 and L2 regularization.
 
-    Parameters:
-    -----------
-    learning_rate: float
-        The step length that will be used when updating the weights
-    n_iterations: float
-        The number of training iterations the algorithm will take to attempt to
-        optimize the model.
-    reg_factor: float
-        The amount of regularization and feature shrinkage
-    l1_ratio: float
-        The contribution of L1 regularization in the combined regularization term
+    Args:
+    ----------
+    learning_rate: The step length that will be used when updating the weights
+    n_iterations: The number of training iterations the algorithm will take to attempt
+        to optimize the model.
+    reg_factor: The amount of regularization and feature shrinkage
+    l1_ratio: The contribution of L1 regularization in the combined regularization term
     """
 
     def __init__(
         self, learning_rate=0.001, n_iterations=1000, reg_factor=0.05, l1_ratio=0.5
     ):
+        """Initialize model parameters.
+
+        Args:
+        ----
+            n_iterations: number of training iterations
+            learning_rate: step length for updating model parameters
+            reg_factor: regularization strength
+            l1_ratio: ratio of L1 regularization
+        """
         self.regularization = Elastic_Regularization(
             alpha=reg_factor, l1_ratio=l1_ratio
         )
@@ -232,30 +350,41 @@ class ElasticNet(Regression):
         super(ElasticNet, self).__init__(n_iterations, learning_rate)
 
     def fit(self, X, y):
+        """Fit the model to the training data.
+
+        Args:
+        ----
+            X: training data
+            y: target values
+        """
         # X = normalize(polynomial_features(X, degree=self.degree))
         super(ElasticNet, self).fit(X, y)
 
     def predict(self, X):
+        """Predict target values for the given data.
+
+        Args:
+        ----
+            X: data to predict target values for
+        """
         # X = normalize(polynomial_features(X, degree=self.degree))
         return super(ElasticNet, self).predict(X)
 
 
 class LogisticRegression:
-    """
-    Logistic Regression classifier performs binary classification by estimating
+    """Logistic Regression classifier.
+
+    Performs binary classification by estimating
     probability of an input belonging to a certain class utilizing a sigmoid
     activation.
 
-    Parameters:
-    -----------
-    learning_rate: float
-        The step length that will be used when updating the weights.
-     n_iterations: float
-        The number of training iterations the algorithm will take to attempt to
-        optimize the model.
-    optimization: Literal['gradient_descent', 'least_squares']
-        The optimization method to use when training the model. Either gradient
-        descent or least squares.
+    Args:
+    ----
+    learning_rate: The step length that will be used when updating the weights.
+     n_iterations: The number of training iterations the algorithm will take to
+        attempt to optimize the model.
+    optimization: The optimization method to use when training the model.
+        Either gradient descent or least squares.
     """
 
     def __init__(
@@ -264,6 +393,14 @@ class LogisticRegression:
         n_iterations=1000,
         optimization: Literal["gradient_descent", "least_squares"] = "gradient_descent",
     ):
+        """Initialize model parameters.
+
+        Args:
+        ----
+            n_iterations: number of training iterations
+            learning_rate: step length for updating model parameters
+            optimization: optimization method
+        """
         self.params = None
         self.learning_rate = learning_rate
         self.n_iterations = n_iterations
@@ -278,6 +415,13 @@ class LogisticRegression:
         self.params = np.random.uniform(-lim, lim, (n_features,))
 
     def fit(self, X, y):
+        """Fit the model to the training data.
+
+        Args:
+        ----
+            X: training data
+            y: target values
+        """
         self._initialize_parameters(X)
         for _ in range(self.n_iterations):
             y_pred = self.sigmoid(X.dot(self.params))
@@ -294,4 +438,10 @@ class LogisticRegression:
                 )
 
     def predict(self, X):
+        """Predict target values for the given data.
+
+        Args:
+        ----
+        X: data to predict target values for
+        """
         return np.round(self.sigmoid(X.dot(self.params))).astype(int)
