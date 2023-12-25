@@ -10,18 +10,18 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = ">=3.9,<3.12"
 jaxlib = [
-    # { version = "0.4.21", platform = "darwin", source = "pypi" },
-    { extras = [
-        "cuda12_cudnn89",
-    ], version = "0.4.21", platform = "linux" },
+    { version = "0.4.21", platform = "darwin", source = "pypi" },
+    # { extras = [
+    #     "cuda12_cudnn89",
+    # ], version = "0.4.21", platform = "linux" },
 ]
 jax = [
-    # { version = "0.4.21", platform = "darwin", source = "pypi", extras = [
-    #     "cpu",
-    # ] },
-    { extras = [
-        "cuda12_pip",
-    ], version = "0.4.21", platform = "linux" },
+    { version = "0.4.21", platform = "darwin", source = "pypi", extras = [
+        "cpu",
+    ] },
+    # { extras = [
+    #     "cuda12_pip",
+    # ], version = "0.4.21", platform = "linux" },
 ]
 # Currently jax-metal only supports jaxlib 0.4.11 - wait for update to support Metal acceleration
 # jax-metal = { version = "^0.0.4", platform = "darwin" }
@@ -32,8 +32,10 @@ numpy = "^1.26.2"
 datasets = "^2.15.0"
 optax = "^0.1.7"
 tqdm = "^4.66.1"
-
-torch = { version = "=1.9.0+cu111", source = "pytorch" }
+torch = [
+    # { version = "=2.1.2+cu111", source = "pytorch", platform = "linux" },
+    { version = "=2.1.2", platform = "darwin" },
+]
 equinox = "^0.11.2"
 orbax = "^0.1.9"
 wandb = "^0.16.1"
