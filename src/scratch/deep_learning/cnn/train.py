@@ -1,7 +1,7 @@
 """Train a CNN on MNIST using Flax."""
+
 from dataclasses import dataclass
 from functools import partial
-from typing import Dict
 
 import flax
 import jax
@@ -11,10 +11,9 @@ from flax.training import train_state
 from flax.training.early_stopping import EarlyStopping
 from jax import jit
 from jaxtyping import Array
-from tqdm import tqdm
-
 from scratch.datasets.dataset import mnist_dataset
 from scratch.deep_learning.cnn.torch_model import CNN
+from tqdm import tqdm
 
 
 class TrainState(train_state.TrainState):
@@ -44,7 +43,7 @@ class TrainEvaluateConfig:
 
 
 @jit
-def train_step(state: TrainState, batch: Dict[str, jnp.ndarray]):
+def train_step(state: TrainState, batch: dict[str, jnp.ndarray]):
     """Train for a single step.
 
     Args:
@@ -74,7 +73,7 @@ def train_step(state: TrainState, batch: Dict[str, jnp.ndarray]):
 
 
 @jit
-def eval_step(state: TrainState, batch: Dict[str, jnp.ndarray]):
+def eval_step(state: TrainState, batch: dict[str, jnp.ndarray]):
     """Evaluate for a single step.
 
     Args:

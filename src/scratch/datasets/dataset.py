@@ -1,14 +1,15 @@
 """Custom datasets for use with the scratch framework."""
+
 import dataclasses
-from typing import Any, Callable, Generic, Iterator, Optional, Tuple, TypeVar
+from collections.abc import Callable, Iterator
+from typing import Any, Generic, TypeVar
 
 import numpy as np
 import torch.nn.functional as F
+from datasets import load_dataset
 from jaxtyping import Array
 from torch.utils.data import DataLoader
 from torch.utils.data.dataloader import default_collate
-
-from datasets import load_dataset
 
 T = TypeVar("T")
 B = TypeVar("B")
@@ -22,7 +23,7 @@ class BatchData(Generic[T]):
 
 
 @dataclasses.dataclass
-class CustomImageClassificationBatch(BatchData[Tuple[Array, Array]]):
+class CustomImageClassificationBatch(BatchData[tuple[Array, Array]]):
     """Batch of images and labels."""
 
     def unpack(self):
@@ -208,5 +209,5 @@ class CustomDataset(Generic[T]):
 
     batch_size: int
     train: CustomDataLoader[T]
-    test: Optional[CustomDataLoader[T]]
-    validation: Optional[CustomDataLoader[T]]
+    test: CustomDataLoader[T] | None
+    validation: CustomDataLoader[T] | None

@@ -1,14 +1,21 @@
 repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: "v0.1.7"
-    hooks:
-      - id: ruff
-      - id: ruff-format
   - repo: local
     hooks:
+      - id: lint
+        name: lint
+        entry: rye lint
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: format
+        name: format
+        entry: rye format --check
+        language: system
+        types: [python]
+        pass_filenames: false
       - id: test
         name: test
-        entry: poetry run pytest
+        entry: rye run pytest
         language: system
         types: [python]
         pass_filenames: false

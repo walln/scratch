@@ -1,7 +1,8 @@
 """Train ResNet18 v1.5 on MNIST."""
+
 import os
 from argparse import ArgumentParser
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING
 
 import equinox as eqx
 import jax
@@ -10,8 +11,6 @@ import optax
 import orbax.checkpoint as ocp
 from jaxtyping import Array, Float, PyTree
 from loguru import logger
-from tqdm import tqdm
-
 from scratch.datasets.dataset import (
     CustomDataLoader,
     CustomImageClassificationBatch,
@@ -19,6 +18,7 @@ from scratch.datasets.dataset import (
 )
 from scratch.deep_learning.resnet.model import ResNet, ResNet18
 from scratch.deep_learning.utils import count_params
+from tqdm import tqdm
 
 if TYPE_CHECKING:
     from loguru import Logger
@@ -135,7 +135,7 @@ def train_epoch(
         opt_state: PyTree,
         x: Float[Array, "batch channels height width"],
         y: Float[Array, "batch classes"],
-    ) -> Tuple[PyTree, eqx.nn.State, PyTree, Float[Array, "batch classes"]]:  # noqa: F821
+    ) -> tuple[PyTree, eqx.nn.State, PyTree, Float[Array, "batch classes"]]:
         grads, (state, loss) = eqx.filter_grad(compute_loss, has_aux=True)(
             model, state, x, y
         )
@@ -186,7 +186,7 @@ def validate_epoch(
         model: eqx.Partial,
         xs: Float[Array, "batch channels width height"],
         ys: Float[Array, "batch classes"],
-    ) -> Tuple[Float[Array, "batch"], Float[Array, "batch"]]:  # noqa: F821
+    ) -> tuple[Float[Array, "batch"], Float[Array, "batch"]]:
         logits, _ = jax.vmap(model)(xs)
         loss, accuracy = compute_metrics(logits=logits, labels=ys)
         return loss, accuracy
@@ -252,7 +252,7 @@ def train_and_evaluate(
 
 def initialize_model_and_opt(
     SEED: int, LEARNING_RATE: float
-) -> Tuple[ResNet, eqx.nn.State, optax.GradientTransformation]:
+) -> tuple[ResNet, eqx.nn.State, optax.GradientTransformation]:
     """Initialize model and optimizer."""
     key = jax.random.PRNGKey(SEED)
     key, subkey = jax.random.split(key, 2)

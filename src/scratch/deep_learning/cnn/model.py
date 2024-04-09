@@ -1,4 +1,5 @@
 """A simple CNN model for image classification."""
+
 from flax import linen as nn
 from flax.linen.initializers import kaiming_normal
 

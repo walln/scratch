@@ -1,4 +1,5 @@
 """A simple CNN model for image classification using pytorch."""
+
 from torch import Tensor, nn
 from torch.nn import functional as F
 

@@ -1,7 +1,7 @@
 """BERT model."""
+
 import dataclasses
 import functools
-from typing import Optional
 
 import equinox as eqx
 import jax
@@ -54,7 +54,7 @@ class BertBlock(eqx.Module):
         )
         self.layer_norm_2 = eqx.nn.LayerNorm(shape=block_config.embedding_size)
 
-    def __call__(self, x, *, dropout: bool = False, key: Optional[Array] = None):
+    def __call__(self, x, *, dropout: bool = False, key: Array | None = None):
         """Forward pass through BertBlock."""
         attention_key, dropout_key = (
             (None, None) if key is None else jax.random.split(key, num=2)
