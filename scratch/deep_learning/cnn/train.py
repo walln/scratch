@@ -14,7 +14,7 @@ from jaxtyping import Array
 from tqdm import tqdm
 
 from scratch.datasets.dataset import mnist_dataset
-from scratch.deep_learning.cnn.model import CNN
+from scratch.deep_learning.cnn.torch_model import CNN
 
 
 class TrainState(train_state.TrainState):
