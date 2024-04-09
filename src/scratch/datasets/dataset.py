@@ -16,6 +16,15 @@ B = TypeVar("B")
 
 
 @dataclasses.dataclass
+class ImageClassificationDatasetMetadata:
+    """Metadata for image classification datasets."""
+
+    num_classes: int
+    input_shape: tuple[int, int, int]
+    name: str
+
+
+@dataclasses.dataclass
 class BatchData(Generic[T]):
     """Wrapper around a batch of data."""
 
@@ -62,6 +71,7 @@ class CustomDataLoader(Generic[B]):
         return len(self.loader)
 
 
+# TODO: fix this to match others
 def mnist_dataset(batch_size=32, shuffle=True):
     """Load the MNIST dataset and return a Dataset object.
 
@@ -72,6 +82,11 @@ def mnist_dataset(batch_size=32, shuffle=True):
     """
     train_data = load_dataset("mnist", split="train")
     test_data = load_dataset("mnist", split="test")
+
+    metadata = ImageClassificationDatasetMetadata(
+        num_classes=10, input_shape=(28, 28, 1), name="mnist"
+    )
+
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=shuffle)  # type: ignore - PyTorch types are incompatible
     test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=shuffle)  # type: ignore - PyTorch types are incompatible
 
@@ -102,7 +117,7 @@ def mnist_dataset(batch_size=32, shuffle=True):
 
     return CustomDataset[CustomImageClassificationBatch](
         batch_size=batch_size, train=train_loader, test=test_loader, validation=None
-    )
+    ), metadata
 
 
 def cifar10_dataset(batch_size=32, shuffle=True):
@@ -113,14 +128,57 @@ def cifar10_dataset(batch_size=32, shuffle=True):
         batch_size: the batch size
         shuffle: whether to shuffle the dataset
     """
-    dataset = load_dataset("cifar10")
-    train_loader = DataLoader(dataset["train"], batch_size=batch_size, shuffle=shuffle)  # type: ignore - PyTorch types are incompatible
-    test_loader = DataLoader(dataset["test"], batch_size=batch_size, shuffle=shuffle)  # type: ignore - PyTorch types are incompatible
+    dataset = load_dataset("cifar10").with_format("torch")
 
-    def transform_colnames(batch):
+    metadata = ImageClassificationDatasetMetadata(
+        num_classes=10, input_shape=(32, 32, 3), name="cifar10"
+    )
+
+    def custom_collate(batch):
+        processed_batch = []
+        for item in batch:
+            image, label = item["img"], item["label"]
+
+            # Ensure that the image is a 3-channel image
+            if image.ndim == 2:
+                # Add a channel dimension and convert to [H, W, C] by repeating
+                # the channel
+                image = image.unsqueeze(-1).repeat(1, 1, 3)
+
+            # Convert to [H, W, C] if the image is in [C, H, W] format
+            elif image.shape[0] == 3:
+                image = image.permute(1, 2, 0)  # Reorder dimensions to [H, W, C]
+
+            # If already in [H, W, C] but grayscale
+            elif image.shape[-1] == 1:
+                image = image.repeat(1, 1, 3)  # Repeat the channel 3 times
+
+            processed_batch.append((image, label))
+
+        # Use the default collate to stack the processed batch
+        return default_collate(processed_batch)
+
+    train_loader = DataLoader(
+        dataset["train"],  # type: ignore - PyTorch types are incompatible
+        batch_size=batch_size,
+        shuffle=shuffle,
+        collate_fn=custom_collate,
+    )
+    test_loader = DataLoader(
+        dataset["test"],  # type: ignore - PyTorch types are incompatible
+        batch_size=batch_size,
+        shuffle=shuffle,
+        collate_fn=custom_collate,
+    )
+
+    def transform_colnames(batch) -> CustomImageClassificationBatch:
+        image, label = batch
         # Scale pixel values from range [0, 255] to [0, 1]
-        batch["image"] = batch["image"].astype(float) / 255.0
-        return CustomImageClassificationBatch(data=(batch["image"], batch["label"]))
+        image = image / 255.0
+        label = F.one_hot(label, num_classes=metadata.num_classes)
+        image = image.numpy().astype(np.float32)
+        label = label.numpy().astype(np.float32)
+        return CustomImageClassificationBatch(data=(image, label))
 
     train_loader = CustomDataLoader[CustomImageClassificationBatch](
         loader=train_loader, transform=transform_colnames
@@ -131,7 +189,7 @@ def cifar10_dataset(batch_size=32, shuffle=True):
 
     return CustomDataset[CustomImageClassificationBatch](
         batch_size=batch_size, train=train_loader, test=test_loader, validation=None
-    )
+    ), metadata
 
 
 def tiny_imagenet_dataset(batch_size=16, shuffle=False):
@@ -143,6 +201,10 @@ def tiny_imagenet_dataset(batch_size=16, shuffle=False):
         shuffle: whether to shuffle the dataset
     """
     dataset = load_dataset("zh-plus/tiny-imagenet").with_format("torch")
+
+    metadata = ImageClassificationDatasetMetadata(
+        num_classes=200, input_shape=(64, 64, 3), name="tiny-imagenet"
+    )
 
     def custom_collate(batch):
         processed_batch = []
@@ -187,7 +249,7 @@ def tiny_imagenet_dataset(batch_size=16, shuffle=False):
         image, label = batch
         # Scale pixel values from range [0, 255] to [0, 1]
         image = image / 255.0
-        label = F.one_hot(label, num_classes=200)
+        label = F.one_hot(label, num_classes=metadata.num_classes)
         image = image.numpy().astype(np.float32)
         label = label.numpy().astype(np.float32)
         return CustomImageClassificationBatch(data=(image, label))
@@ -200,7 +262,7 @@ def tiny_imagenet_dataset(batch_size=16, shuffle=False):
     )
     return CustomDataset[CustomImageClassificationBatch](
         batch_size=batch_size, train=train_loader, test=test_loader, validation=None
-    )
+    ), metadata
 
 
 @dataclasses.dataclass
