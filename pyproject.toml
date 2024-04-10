@@ -23,6 +23,7 @@ dependencies = [
     "typer>=0.12.2",
     "jaxlib @ https://storage.googleapis.com/jax-releases/cuda12/jaxlib-0.4.26+cuda12.cudnn89-cp312-cp312-manylinux2014_x86_64.whl",
     "jax[cuda12_pip]>=0.4.26",
+    "jmp>=0.0.4",
 ]
 license = "MIT"
 readme = "README.md"
@@ -46,6 +47,9 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/scratch"]
+
+[tool.ruff]
+include = ["src/**", "tests/**"]
 
 [tool.ruff.lint]
 pydocstyle.convention = "google"

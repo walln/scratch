@@ -7,6 +7,7 @@ import jax
 import jax.numpy as jnp
 import jmp
 import optax
+
 from scratch.llm.bert.model import Bert, BertConfig
 
 

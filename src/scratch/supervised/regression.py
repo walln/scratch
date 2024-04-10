@@ -5,6 +5,7 @@ from enum import Enum
 from typing import Literal
 
 import numpy as np
+
 from scratch.activation_functions.sigmoid import Sigmoid
 from scratch.utils.data import diagonalize
 from scratch.utils.logging import setup_logger
@@ -140,6 +141,8 @@ class Regression:
         """
         self.n_iterations = n_iterations
         self.learning_rate = learning_rate
+        self.regularization = lambda x: 0
+        self.regularization.grad = lambda x: 0
 
     def init_weights(self, n_features):
         """Randomly initialize the model weights between [-1/N, 1/N].
