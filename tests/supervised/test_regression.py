@@ -1,4 +1,5 @@
 """Test regression models."""
+
 from sklearn.datasets import make_classification, make_regression
 from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
@@ -18,7 +19,7 @@ logger = setup_logger()
 
 def regression_dataset():
     """Return a regression dataset."""
-    X, y = make_regression(n_samples=2000, n_features=1, noise=20, random_state=1)
+    X, y = make_regression(n_samples=2000, n_features=1, noise=20, random_state=1)  # type: ignore broken types
     # X, y = load_diabetes(return_X_y=True)
 
     data_scaler = StandardScaler()

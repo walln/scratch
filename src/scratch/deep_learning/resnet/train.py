@@ -1,44 +1,43 @@
 """Train ResNet18 v1.5 on MNIST."""
+
 import os
-from argparse import ArgumentParser
-from typing import TYPE_CHECKING, Tuple
+from typing import Annotated
 
 import equinox as eqx
 import jax
 import jax.numpy as jnp
 import optax
 import orbax.checkpoint as ocp
+import typer
 from jaxtyping import Array, Float, PyTree
-from loguru import logger
-from tqdm import tqdm
+from rich.console import Console
+from rich.progress import Progress
 
 from scratch.datasets.dataset import (
     CustomDataLoader,
     CustomImageClassificationBatch,
-    tiny_imagenet_dataset,
+    cifar10_dataset,
 )
 from scratch.deep_learning.resnet.model import ResNet, ResNet18
 from scratch.deep_learning.utils import count_params
 
-if TYPE_CHECKING:
-    from loguru import Logger
+console = Console()
+
+app = typer.Typer(pretty_exceptions_show_locals=False)
 
 
-def log_epoch_train(epoch: int, losses: Float[Array, ""], logger: "Logger"):
+def log_epoch_train(epoch: int, losses: Float[Array, ""]):
     """Log epoch training results."""
-    logger.info(
-        f"Epoch: {epoch} training - " f" loss: {losses.mean().item()}",
-    )
+    console.print(f"Epoch: {epoch} training - loss: {losses.mean().item()}")
 
 
 def log_epoch_val(
     epoch: int,
     losses: Float[Array, ""],
     accuracies: Float[Array, ""],
-    logger: "Logger",
 ):
     """Log epoch validation results."""
-    logger.info(
+    console.print(
         f"Epoch: {epoch} validation - "
         f" loss: {losses.mean().item()}"
         f" accuracy: {accuracies.mean().item()}"
@@ -46,8 +45,8 @@ def log_epoch_val(
 
 
 def cross_entropy(
-    y: Float[Array, " batch 200"],
-    pred_y: Float[Array, "batch 200"],
+    y: Float[Array, " batch num_classes"],
+    pred_y: Float[Array, "batch num_classes"],
 ) -> Float[Array, ""]:
     """Compute cross entropy loss on a batch of predictions.
 
@@ -67,13 +66,14 @@ def cross_entropy(
 def compute_loss(
     model: ResNet,
     state: eqx.nn.State,
-    x: Float[Array, "batch 1 28 28"],
-    y: Float[Array, " batch 200"],
+    x: Float[Array, "batch channels width height"],
+    y: Float[Array, " batch num_classes"],
 ):
     """Compute average cross-entropy loss on a batch.
 
-    Input will be of shape (BATCH_SIZE, 1, 28, 28), but our model expects
-    (1, 28, 28), so we use jax.vmap to map our model over the leading (batch) axis.
+    Input will be of shape (BATCH_SIZE, channels, width, height), but our model expects
+    (1, width, height), so we use jax.vmap to map our model over the leading (batch)
+    axis.
 
     Args:
     ----
@@ -95,7 +95,9 @@ def compute_loss(
 
 
 def compute_metrics(
-    *, logits: Float[Array, "batch 200"], labels: Float[Array, "batch 200"]
+    *,
+    logits: Float[Array, "batch num_classes"],
+    labels: Float[Array, "batch num_classes"],
 ):
     """Compute metrics for a batch of logits and labels."""
     accuracy = jnp.mean(jnp.argmax(logits, axis=1) == jnp.argmax(labels, axis=1))
@@ -109,8 +111,9 @@ def train_epoch(
     state: eqx.nn.State,
     trainloader: CustomDataLoader[CustomImageClassificationBatch],
     epoch: int,
+    optim: optax.GradientTransformation,
     opt_state: optax.OptState,
-    logger: "Logger",
+    progress: Progress,
 ):
     """Train a resnet model for one epoch.
 
@@ -120,8 +123,9 @@ def train_epoch(
         state: the batch state
         trainloader: the training dataset
         epoch: the current epoch
+        optim: the optimizer
         opt_state: the optimizer state
-        logger: the logger
+        progress: the progress state
 
     Returns:
     -------
@@ -132,10 +136,11 @@ def train_epoch(
     def train_step(
         model: PyTree,
         state: eqx.nn.State,
+        optim: optax.GradientTransformation,
         opt_state: PyTree,
         x: Float[Array, "batch channels height width"],
         y: Float[Array, "batch classes"],
-    ) -> Tuple[PyTree, eqx.nn.State, PyTree, Float[Array, "batch classes"]]:  # noqa: F821
+    ) -> tuple[PyTree, eqx.nn.State, PyTree, Float[Array, "batch classes"]]:
         grads, (state, loss) = eqx.filter_grad(compute_loss, has_aux=True)(
             model, state, x, y
         )
@@ -146,15 +151,22 @@ def train_epoch(
     # Set to training mode
     model = eqx.nn.inference_mode(model, value=False)
 
-    train_bar = tqdm(trainloader, leave=False, desc="Training")
     losses = jnp.array([])
-    for batch in train_bar:
+    for batch_idx, batch in progress.track(
+        enumerate(trainloader),
+        description=f"Training epoch: {epoch}",
+        total=len(trainloader),
+    ):
         x, y = batch.unpack()
-        model, state, opt_state, train_loss = train_step(model, state, opt_state, x, y)
+        model, state, opt_state, train_loss = train_step(
+            model, state, optim, opt_state, x, y
+        )
         losses = jnp.append(losses, train_loss)
-        train_bar.set_postfix_str(f"train_loss={train_loss.item()}")
 
-    log_epoch_train(epoch, losses, logger)
+        if batch_idx % 250 == 0:
+            progress.print(f"train_loss={train_loss.item()}")
+
+    log_epoch_train(epoch, losses)
 
     return model, state, opt_state
 
@@ -164,7 +176,7 @@ def validate_epoch(
     state: eqx.nn.State,
     testloader: CustomDataLoader[CustomImageClassificationBatch],
     epoch: int,
-    logger: "Logger",
+    progress: Progress,
 ):
     """Validate a model on a test set.
 
@@ -174,7 +186,7 @@ def validate_epoch(
         state: the batch state
         testloader: the test dataset
         epoch: the current epoch
-        logger: the logger
+        progress: the progress state
 
     Returns:
     -------
@@ -186,7 +198,7 @@ def validate_epoch(
         model: eqx.Partial,
         xs: Float[Array, "batch channels width height"],
         ys: Float[Array, "batch classes"],
-    ) -> Tuple[Float[Array, "batch"], Float[Array, "batch"]]:  # noqa: F821
+    ) -> tuple[Float[Array, "batch"], Float[Array, "batch"]]:
         logits, _ = jax.vmap(model)(xs)
         loss, accuracy = compute_metrics(logits=logits, labels=ys)
         return loss, accuracy
@@ -194,20 +206,25 @@ def validate_epoch(
     # Set to inference mode
     inference_model = eqx.nn.inference_mode(model)
     inference_model = eqx.Partial(inference_model, state=state)
-    validation_bar = tqdm(testloader, leave=False, desc="Validation")
 
     accuracies = jnp.array([])
     losses = jnp.array([])
-    for batch in validation_bar:
+    for batch_idx, batch in progress.track(
+        enumerate(testloader),
+        description=f"Validation epoch: {epoch}",
+        total=len(testloader),
+    ):
         x, y = batch.unpack()
         test_loss, accuracy = validate_step(inference_model, x, y)
         accuracies = jnp.append(accuracies, accuracy)
         losses = jnp.append(losses, test_loss)
-        validation_bar.set_postfix_str(
-            f"test_loss={test_loss.item()}, test_accuracy={accuracy.item()}"
-        )
 
-    log_epoch_val(epoch, losses, accuracies, logger)
+        if batch_idx % 250 == 0:
+            progress.print(
+                f"test_loss={test_loss.item()}, test_accuracy={accuracy.item()}"
+            )
+
+    log_epoch_val(epoch, losses, accuracies)
 
     return model, state
 
@@ -220,88 +237,98 @@ def train_and_evaluate(
     optim: optax.GradientTransformation,
     epochs: int,
     checkpointer: ocp.CheckpointManager,
-    logger: "Logger",
 ):
     """Train ResNet18 v1.5."""
     # Filter arrays within the model to get trainable parameters
     opt_state = optim.init(eqx.filter(model, eqx.is_array))
 
-    epoch_bar = tqdm(range(epochs), leave=True, desc="ResNet training - Epoch")
-    for epoch in epoch_bar:
-        epoch_bar.set_postfix_str("Training")
-        model, state, opt_state = train_epoch(
-            model=model,
-            state=state,
-            trainloader=trainloader,
-            epoch=epoch,
-            opt_state=opt_state,
-            logger=logger,
-        )
+    with Progress(console=console, transient=True) as progress:
+        epoch_bar = progress.add_task("[cyan]ResNet train and eval", total=epochs)
 
-        epoch_bar.set_postfix_str("Validating")
-        model, state = validate_epoch(
-            model=model, state=state, testloader=testloader, epoch=epoch, logger=logger
-        )
+        for epoch in range(epochs):
+            progress.update(epoch_bar, description=f"ResNet training - Epoch {epoch}")
+            model, state, opt_state = train_epoch(
+                model=model,
+                state=state,
+                trainloader=trainloader,
+                epoch=epoch,
+                optim=optim,
+                opt_state=opt_state,
+                progress=progress,
+            )
 
-        checkpointer.save(
-            epoch, {"model": model, "state": state, "opt_state": opt_state}, force=True
-        )
+            progress.update(epoch_bar, description=f"ResNet validating - Epoch {epoch}")
+            model, state = validate_epoch(
+                model=model,
+                state=state,
+                testloader=testloader,
+                epoch=epoch,
+                progress=progress,
+            )
+
+            checkpointer.save(
+                epoch,
+                args=ocp.args.Composite(
+                    model=ocp.args.PyTreeSave(model),  # type: ignore orbax broken type
+                    state=ocp.args.PyTreeSave(state.tree_flatten()),  # type: ignore orbax broken type
+                    opt_state=ocp.args.PyTreeSave(opt_state),  # type: ignore orbax broken type
+                ),
+            )
+
+            progress.update(epoch_bar, advance=1)
+
+        progress.print("[green]Training complete.")
 
     return model
 
 
 def initialize_model_and_opt(
-    SEED: int, LEARNING_RATE: float
-) -> Tuple[ResNet, eqx.nn.State, optax.GradientTransformation]:
+    seed: int, learning_rate: float, num_classes: int
+) -> tuple[ResNet, eqx.nn.State, optax.GradientTransformation]:
     """Initialize model and optimizer."""
-    key = jax.random.PRNGKey(SEED)
+    key = jax.random.PRNGKey(seed)
     key, subkey = jax.random.split(key, 2)
-    model, state = eqx.nn.make_with_state(ResNet18)(num_classes=200, key=subkey)
-    optim = optax.adamw(LEARNING_RATE)
+    model, state = eqx.nn.make_with_state(ResNet18)(num_classes=num_classes, key=subkey)
+    optim = optax.adamw(learning_rate)
 
     return model, state, optim
 
 
-if __name__ == "__main__":
-    parser = ArgumentParser()
-    parser.add_argument("--batch_size", type=int, default=64)
-    parser.add_argument("--learning_rate", type=float, default=1e-3)
-    parser.add_argument("--epochs", type=int, default=3)
-    parser.add_argument("--seed", type=int, default=5678)
-    parser.add_argument(
-        "--checkpoint_path",
-        type=str,
-        default="scratch/deep_learning/resnet/checkpoints",
+@app.command()
+def main(
+    batch_size: Annotated[int, typer.Option(help="The batch size")] = 64,
+    learning_rate: Annotated[float, typer.Option(help="The learning rate")] = 1e-3,
+    epochs: Annotated[int, typer.Option(help="The number of epochs")] = 3,
+    seed: Annotated[int, typer.Option(help="The random seed")] = 42,
+    checkpoint_path: Annotated[
+        str, typer.Option(help="The model checkpoint path")
+    ] = os.path.join(os.getcwd(), "checkpoints/deep_learning/resnet/"),
+):
+    """Main training program."""
+    console.print("Initializing ResNet18 v1.5 training with configuration:")
+    console.print(f"Batch size: {batch_size}")
+    console.print(f"Learning rate: {learning_rate}")
+    console.print(f"Epochs: {epochs}")
+    console.print(f"Seed: {seed}")
+    console.print(f"Checkpoint path: {checkpoint_path}")
+    console.line()
+
+    console.print("Loading dataset")
+    # dataset = tiny_imagenet_dataset(batch_size=batch_size, shuffle=True)
+    dataset, dataset_meta = cifar10_dataset(batch_size=batch_size, shuffle=True)
+    console.print(f"[green]Dataset loaded: {dataset_meta.name}[/green]")
+
+    console.print("Initializing model and optimizer")
+    model, state, optim = initialize_model_and_opt(
+        seed, learning_rate, dataset_meta.num_classes
     )
-    args = parser.parse_args()
-
-    BATCH_SIZE = args.batch_size
-    LEARNING_RATE = args.learning_rate
-    EPOCHS = args.epochs
-    SEED = args.seed
-    CHECKPOINT_PATH = os.path.join(os.getcwd(), args.checkpoint_path)
-
-    logger.remove()
-    logger.add(lambda msg: tqdm.write(msg, end=""), colorize=True)
-
-    logger.info("Intializing ResNet18 v1.5 training with configuration:")
-    logger.info(f"Batch size: {BATCH_SIZE}")
-    logger.info(f"Learning rate: {LEARNING_RATE}")
-    logger.info(f"Epochs: {EPOCHS}")
-    logger.info(f"Seed: {SEED}")
-    logger.info(f"Checkpoint path: {CHECKPOINT_PATH}")
-    logger.info("-" * 80)
-
-    logger.info("Loading dataset: tiny-imagenet-200")
-    dataset = tiny_imagenet_dataset(batch_size=BATCH_SIZE, shuffle=True)
-
-    logger.info("Initializing model and optimizer")
-    model, state, optim = initialize_model_and_opt(SEED, LEARNING_RATE)
 
     param_count, param_count_mils = count_params(model)
-    logger.info(f"Model configuration loaded with: {param_count_mils:.2f}M parameters")
+    console.print(
+        f"Model configuration loaded with: {param_count_mils:.2f}M parameters"
+    )
 
-    logger.info("-" * 80)
+    console.line()
 
     trainloader = dataset.train
     testloader = dataset.test
@@ -312,8 +339,11 @@ if __name__ == "__main__":
     checkpointer_options = ocp.CheckpointManagerOptions(
         save_interval_steps=1, max_to_keep=1
     )
+
     checkpointer = ocp.CheckpointManager(
-        CHECKPOINT_PATH, ocp.PyTreeCheckpointer(), options=checkpointer_options
+        checkpoint_path,
+        item_names=("model", "state", "opt_state"),
+        options=checkpointer_options,
     )
 
     model = train_and_evaluate(
@@ -322,7 +352,12 @@ if __name__ == "__main__":
         trainloader=trainloader,
         testloader=testloader,
         optim=optim,
-        epochs=EPOCHS,
+        epochs=epochs,
         checkpointer=checkpointer,
-        logger=logger,
     )
+
+    checkpointer.close()
+
+
+if __name__ == "__main__":
+    app()

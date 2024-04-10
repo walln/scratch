@@ -1,7 +1,7 @@
 """Resnet model implemented in Equinox."""
 
+from collections.abc import Sequence
 from functools import partial
-from typing import Optional, Sequence, Tuple
 
 import equinox as eqx
 import jax
@@ -17,18 +17,18 @@ class Block(eqx.nn.StatefulLayer):
     bn1: eqx.nn.BatchNorm
     conv2: eqx.nn.Conv2d
     bn2: eqx.nn.BatchNorm
-    conv3: Optional[eqx.nn.Conv2d] = None
-    bn3: Optional[eqx.nn.BatchNorm] = None
-    downsample: Optional[eqx.nn.Sequential] = None
+    conv3: eqx.nn.Conv2d | None = None
+    bn3: eqx.nn.BatchNorm | None = None
+    downsample: eqx.nn.Sequential | None = None
 
     def __init__(
         self,
         in_channels: int,
         out_channels: int,
         stride: int = 1,
-        downsample: Optional[eqx.nn.Sequential] = None,
+        downsample: eqx.nn.Sequential | None = None,
         *,
-        key: Optional[Array] = None,
+        key: Array | None = None,
     ):
         """Create a bottleneck block."""
         use_bottleneck = out_channels // in_channels >= 4
@@ -94,7 +94,7 @@ class Block(eqx.nn.StatefulLayer):
         self.downsample = downsample
         self.out_channels = out_channels
 
-    def __call__(self, x, state, key) -> Tuple[Array, eqx.nn.State]:
+    def __call__(self, x, state, key) -> tuple[Array, eqx.nn.State]:
         """Forward pass on bottleneck block."""
         residual = x
 
@@ -223,7 +223,7 @@ class ResNet(eqx.Module):
 
         return eqx.nn.Sequential(layers)
 
-    def __call__(self, x: Array, state: eqx.nn.State) -> Tuple[Array, eqx.nn.State]:
+    def __call__(self, x: Array, state: eqx.nn.State) -> tuple[Array, eqx.nn.State]:
         """Run a forward pass on resnet model."""
         x = x.transpose(2, 1, 0)
         x = self.conv_1(x)

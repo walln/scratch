@@ -1,4 +1,5 @@
 """Regression models for supervised learning."""
+
 import math
 from enum import Enum
 from typing import Literal
@@ -118,7 +119,7 @@ class OptimizationMethod(str, Enum):
     least_squares = "least_squares"
 
 
-class Regression(object):
+class Regression:
     """Base regression model that fits a relationship between scalars X and Y.
 
     Args:
@@ -140,6 +141,8 @@ class Regression(object):
         """
         self.n_iterations = n_iterations
         self.learning_rate = learning_rate
+        self.regularization = lambda x: 0
+        self.regularization.grad = lambda x: 0
 
     def init_weights(self, n_features):
         """Randomly initialize the model weights between [-1/N, 1/N].
@@ -164,7 +167,7 @@ class Regression(object):
         self.init_weights(n_features=X.shape[1])
         self.training_errors = []
 
-        for i in range(self.n_iterations):
+        for _ in range(self.n_iterations):
             y_pred = X.dot(self.w)
             # Calculate l2 loss
             mse = np.mean(0.5 * (y - y_pred) ** 2 + self.regularization(self.w))
@@ -220,9 +223,7 @@ class LinearRegression(Regression):
         # No regularization
         self.regularization = lambda x: 0
         self.regularization.grad = lambda x: 0
-        super(LinearRegression, self).__init__(
-            n_iterations=n_iterations, learning_rate=learning_rate
-        )
+        super().__init__(n_iterations=n_iterations, learning_rate=learning_rate)
 
     def fit(self, X, y):
         """Fit the model to the training data.
@@ -241,7 +242,7 @@ class LinearRegression(Regression):
             inv = V.dot(np.linalg.pinv(np.diag(S))).dot(U.T)
             self.w = inv.dot(X.T).dot(y)
         else:
-            super(LinearRegression, self).fit(X, y)
+            super().fit(X, y)
 
 
 class LassoRegression(Regression):
@@ -269,7 +270,7 @@ class LassoRegression(Regression):
             reg_factor: regularization strength
         """
         self.regularization = L1_Regularization(alpha=reg_factor)
-        super(LassoRegression, self).__init__(n_iterations, learning_rate)
+        super().__init__(n_iterations, learning_rate)
 
     def fit(self, X, y):
         """Fit the model to the training data.
@@ -279,7 +280,7 @@ class LassoRegression(Regression):
             X: training data
         y: target values
         """
-        super(LassoRegression, self).fit(X, y)
+        super().fit(X, y)
 
     def predict(self, X):
         """Predict target values for the given data.
@@ -288,7 +289,7 @@ class LassoRegression(Regression):
         ----
         X: data to predict target values for
         """
-        return super(LassoRegression, self).predict(X)
+        return super().predict(X)
 
 
 class RidgeRegression(Regression):
@@ -316,7 +317,7 @@ class RidgeRegression(Regression):
             reg_factor: regularization strength
         """
         self.regularization = L2_Regularization(alpha=reg_factor)
-        super(RidgeRegression, self).__init__(n_iterations, learning_rate)
+        super().__init__(n_iterations, learning_rate)
 
 
 class ElasticNet(Regression):
@@ -347,7 +348,7 @@ class ElasticNet(Regression):
             alpha=reg_factor, l1_ratio=l1_ratio
         )
 
-        super(ElasticNet, self).__init__(n_iterations, learning_rate)
+        super().__init__(n_iterations, learning_rate)
 
     def fit(self, X, y):
         """Fit the model to the training data.
@@ -358,7 +359,7 @@ class ElasticNet(Regression):
             y: target values
         """
         # X = normalize(polynomial_features(X, degree=self.degree))
-        super(ElasticNet, self).fit(X, y)
+        super().fit(X, y)
 
     def predict(self, X):
         """Predict target values for the given data.
@@ -368,7 +369,7 @@ class ElasticNet(Regression):
             X: data to predict target values for
         """
         # X = normalize(polynomial_features(X, degree=self.degree))
-        return super(ElasticNet, self).predict(X)
+        return super().predict(X)
 
 
 class LogisticRegression:

@@ -1,12 +1,12 @@
 """Train a CNN on MNIST using Flax."""
+
 from dataclasses import dataclass
 from functools import partial
-from typing import Dict
 
-import flax
 import jax
 import jax.numpy as jnp
 import optax
+from flax.jax_utils import replicate
 from flax.training import train_state
 from flax.training.early_stopping import EarlyStopping
 from jax import jit
@@ -14,7 +14,7 @@ from jaxtyping import Array
 from tqdm import tqdm
 
 from scratch.datasets.dataset import mnist_dataset
-from scratch.deep_learning.cnn.model import CNN
+from scratch.deep_learning.cnn.torch_model import CNN
 
 
 class TrainState(train_state.TrainState):
@@ -26,6 +26,7 @@ class TrainState(train_state.TrainState):
 def create_train_state(rng: Array, learning_rate: float, momentum: float):
     """Create initial `TrainState`."""
     model = CNN(num_classes=10)
+    # TODO: use model metadata.shape instead of hardcoding
     variables = model.init(rng, jnp.ones([1, 28, 28, 1]))
     params = variables["params"]
     tx = optax.sgd(learning_rate, momentum)
@@ -44,7 +45,7 @@ class TrainEvaluateConfig:
 
 
 @jit
-def train_step(state: TrainState, batch: Dict[str, jnp.ndarray]):
+def train_step(state: TrainState, batch: dict[str, jnp.ndarray]):
     """Train for a single step.
 
     Args:
@@ -74,7 +75,7 @@ def train_step(state: TrainState, batch: Dict[str, jnp.ndarray]):
 
 
 @jit
-def eval_step(state: TrainState, batch: Dict[str, jnp.ndarray]):
+def eval_step(state: TrainState, batch: dict[str, jnp.ndarray]):
     """Evaluate for a single step.
 
     Args:
@@ -101,7 +102,7 @@ def train_and_evaluate(config: TrainEvaluateConfig):
         config: the configuration for training and evaluation
     """
     num_devices = jax.device_count()
-    dataset = mnist_dataset(batch_size=config.batch_size, shuffle=True)
+    dataset, metadata = mnist_dataset(batch_size=config.batch_size, shuffle=True)
     train_dataloader = dataset.train
     test_dataloader = dataset.test
 
@@ -110,7 +111,7 @@ def train_and_evaluate(config: TrainEvaluateConfig):
 
     state = create_train_state(init_rng, config.learning_rate, config.momentum)
 
-    state = flax.jax_utils.replicate(state)
+    state = replicate(state)
 
     parallel_train_step = jax.pmap(partial(train_step), axis_name="batch")
     parallel_eval_step = jax.pmap(eval_step, axis_name="batch")
