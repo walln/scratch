@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from scratch.deep_learning.layers.attention import MultiHeadAttention
+from scratch.deep_learning.torch_layers.attention import MultiHeadAttention
 
 
 def test_initialization():
