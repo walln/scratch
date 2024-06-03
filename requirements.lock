@@ -52,7 +52,7 @@ filelock==3.13.3
     # via datasets
     # via huggingface-hub
     # via torch
-flax==0.8.2
+flax==0.8.4
     # via scratch
 fonttools==4.51.0
     # via matplotlib
