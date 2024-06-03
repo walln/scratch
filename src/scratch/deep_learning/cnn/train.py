@@ -11,10 +11,9 @@ from flax.training import train_state
 from flax.training.early_stopping import EarlyStopping
 from jax import jit
 from jaxtyping import Array
-from tqdm import tqdm
-
 from scratch.datasets.dataset import mnist_dataset
 from scratch.deep_learning.cnn.torch_model import CNN
+from tqdm import tqdm
 
 
 class TrainState(train_state.TrainState):

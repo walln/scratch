@@ -13,6 +13,7 @@ from torch.utils.data.dataloader import default_collate
 
 T = TypeVar("T")
 B = TypeVar("B")
+M = TypeVar("M")
 
 
 @dataclasses.dataclass
@@ -71,42 +72,62 @@ class CustomDataLoader(Generic[B]):
         return len(self.loader)
 
 
-# TODO: fix this to match others
-def mnist_dataset(batch_size=32, shuffle=True):
-    """Load the MNIST dataset and return a Dataset object.
+def dummy_image_classification_dataset(
+    batch_size=32, shuffle=True, num_samples=100, num_classes=10, shape=(28, 28, 1)
+):
+    """Create a dummy image classification dataset.
 
     Args:
     ----
         batch_size: the batch size
         shuffle: whether to shuffle the dataset
+        num_samples: the number of samples in the dataset
+        num_classes: the number of classes
+        shape: the shape of the images
     """
-    train_data = load_dataset("mnist", split="train")
-    test_data = load_dataset("mnist", split="test")
-
     metadata = ImageClassificationDatasetMetadata(
-        num_classes=10, input_shape=(28, 28, 1), name="mnist"
+        num_classes=10, input_shape=(28, 28, 1), name="dummy"
     )
 
-    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=shuffle)  # type: ignore - PyTorch types are incompatible
-    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=shuffle)  # type: ignore - PyTorch types are incompatible
+    # Just create an array of random numbers as the dummy dataset
+    def custom_collate(batch):
+        processed_batch = []
+        for item in batch:
+            image, label = item
+            processed_batch.append((image, label))
+
+        # Use the default collate to stack the processed batch
+        return default_collate(processed_batch)
+
+    data = np.random.rand(num_samples, *shape)
+    labels = np.random.randint(0, num_classes, num_samples)
+
+    train_loader = DataLoader(
+        list(zip(data, labels, strict=False)),  # type: ignore - PyTorch types are incompatible
+        batch_size=batch_size,
+        shuffle=shuffle,
+        collate_fn=custom_collate,
+    )
+
+    test_loader = DataLoader(
+        list(zip(data, labels, strict=False)),  # type: ignore - PyTorch types are incompatible
+        batch_size=batch_size,
+        shuffle=shuffle,
+        collate_fn=custom_collate,
+    )
 
     def transform_colnames(batch):
         # change shape from (batch_size, 28, 28) to (batch_size, 28, 28, 1)
-        batch["image"] = (
-            batch["image"]
-            .reshape(
-                batch["image"].shape[0],
-                batch["image"].shape[1],
-                batch["image"].shape[2],
-                1,
-            )
-            .to_numpy()
-        )
+        image, label = batch
+        image = image.reshape(
+            image.shape[0],
+            image.shape[1],
+            image.shape[2],
+            1,
+        ).numpy()
 
-        # Scale pixel values from range [0, 255] to [0, 1]
-        batch["image"] = batch["image"].astype(float) / 255.0
-        batch["label"] = batch["label"].to_numpy()
-        return CustomImageClassificationBatch(data=(batch["image"], batch["label"]))
+        label = F.one_hot(label, num_classes=metadata.num_classes).numpy()
+        return CustomImageClassificationBatch(data=(image, label))
 
     train_loader = CustomDataLoader[CustomImageClassificationBatch](
         loader=train_loader, transform=transform_colnames
@@ -115,9 +136,88 @@ def mnist_dataset(batch_size=32, shuffle=True):
         loader=test_loader, transform=transform_colnames
     )
 
-    return CustomDataset[CustomImageClassificationBatch](
-        batch_size=batch_size, train=train_loader, test=test_loader, validation=None
-    ), metadata
+    return CustomDataset[
+        CustomImageClassificationBatch, ImageClassificationDatasetMetadata
+    ](
+        batch_size=batch_size,
+        train=train_loader,
+        test=test_loader,
+        validation=None,
+        metadata=metadata,
+    )
+
+
+def mnist_dataset(batch_size=32, shuffle=True):
+    """Load the MNIST dataset and return a Dataset object.
+
+    Args:
+    ----
+        batch_size: the batch size
+        shuffle: whether to shuffle the dataset
+    """
+    train_data = load_dataset(
+        "mnist", split="train", trust_remote_code=True
+    ).with_format("torch")
+    test_data = load_dataset("mnist", split="test", trust_remote_code=True).with_format(
+        "torch"
+    )
+
+    metadata = ImageClassificationDatasetMetadata(
+        num_classes=10, input_shape=(28, 28, 1), name="mnist"
+    )
+
+    def custom_collate(batch):
+        processed_batch = []
+        for item in batch:
+            image, label = item["image"], item["label"]
+            processed_batch.append((image, label))
+
+        # Use the default collate to stack the processed batch
+        return default_collate(processed_batch)
+
+    train_loader = DataLoader(
+        train_data,  # type: ignore - PyTorch types are incompatible
+        batch_size=batch_size,
+        shuffle=shuffle,
+        collate_fn=custom_collate,
+    )
+    test_loader = DataLoader(
+        test_data,  # type: ignore - PyTorch types are incompatible
+        batch_size=batch_size,
+        shuffle=shuffle,
+        collate_fn=custom_collate,
+    )
+
+    def transform_colnames(batch):
+        # change shape from (batch_size, 28, 28) to (batch_size, 28, 28, 1)
+        image, label = batch
+        image = image.reshape(
+            image.shape[0],
+            image.shape[1],
+            image.shape[2],
+            1,
+        ).numpy()
+
+        image = image.astype(np.float32) / 255.0
+        label = F.one_hot(label, num_classes=metadata.num_classes).numpy()
+        return CustomImageClassificationBatch(data=(image, label))
+
+    train_loader = CustomDataLoader[CustomImageClassificationBatch](
+        loader=train_loader, transform=transform_colnames
+    )
+    test_loader = CustomDataLoader[CustomImageClassificationBatch](
+        loader=test_loader, transform=transform_colnames
+    )
+
+    return CustomDataset[
+        CustomImageClassificationBatch, ImageClassificationDatasetMetadata
+    ](
+        batch_size=batch_size,
+        train=train_loader,
+        test=test_loader,
+        validation=None,
+        metadata=metadata,
+    )
 
 
 def cifar10_dataset(batch_size=32, shuffle=True):
@@ -187,9 +287,15 @@ def cifar10_dataset(batch_size=32, shuffle=True):
         loader=test_loader, transform=transform_colnames
     )
 
-    return CustomDataset[CustomImageClassificationBatch](
-        batch_size=batch_size, train=train_loader, test=test_loader, validation=None
-    ), metadata
+    return CustomDataset[
+        CustomImageClassificationBatch, ImageClassificationDatasetMetadata
+    ](
+        batch_size=batch_size,
+        train=train_loader,
+        test=test_loader,
+        validation=None,
+        metadata=metadata,
+    )
 
 
 def tiny_imagenet_dataset(batch_size=16, shuffle=False):
@@ -260,16 +366,23 @@ def tiny_imagenet_dataset(batch_size=16, shuffle=False):
     test_loader = CustomDataLoader[CustomImageClassificationBatch](
         loader=test_loader, transform=transform_colnames
     )
-    return CustomDataset[CustomImageClassificationBatch](
-        batch_size=batch_size, train=train_loader, test=test_loader, validation=None
-    ), metadata
+    return CustomDataset[
+        CustomImageClassificationBatch, ImageClassificationDatasetMetadata
+    ](
+        batch_size=batch_size,
+        train=train_loader,
+        test=test_loader,
+        validation=None,
+        metadata=metadata,
+    )
 
 
 @dataclasses.dataclass
-class CustomDataset(Generic[T]):
+class CustomDataset(Generic[T, M]):
     """Data module class that contains loaders."""
 
     batch_size: int
+    metadata: M
     train: CustomDataLoader[T]
     test: CustomDataLoader[T] | None
     validation: CustomDataLoader[T] | None
