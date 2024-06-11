@@ -77,3 +77,7 @@ ignore = ["F722"]
 [[tool.rye.sources]]
 name = "jaxlib-gpu"
 url = "https://storage.googleapis.com/jax-releases/jax_cuda_releases.html"
+
+
+[tool.rye.scripts]
+monitor = { cmd = "nvtop", description = "Monitor GPU usage"}

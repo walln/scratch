@@ -1,10 +1,5 @@
 """Test regression models."""
 
-from sklearn.datasets import make_classification, make_regression
-from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, r2_score
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
-
 from scratch.supervised.regression import (
     ElasticNet,
     LassoRegression,
@@ -13,6 +8,10 @@ from scratch.supervised.regression import (
     RidgeRegression,
 )
 from scratch.utils.logging import setup_logger
+from sklearn.datasets import make_classification, make_regression
+from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, r2_score
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 logger = setup_logger()
 
