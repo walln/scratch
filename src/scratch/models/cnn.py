@@ -28,6 +28,12 @@ class CNN(nnx.Module):
     """A simple CNN model."""
 
     def __init__(self, config: CNNConfig, *, rngs: nnx.Rngs):
+        """Initializes the simple CNN model.
+
+        Args:
+            config: Configuration for the model
+            rngs: Random number generators
+        """
         self.conv1 = nnx.Conv(1, 32, kernel_size=(3, 3), rngs=rngs)
         self.conv2 = nnx.Conv(32, 64, kernel_size=(3, 3), rngs=rngs)
         self.avg_pool = partial(nnx.avg_pool, window_shape=(2, 2), strides=(2, 2))
@@ -35,6 +41,14 @@ class CNN(nnx.Module):
         self.linear2 = nnx.Linear(256, config.num_classes, rngs=rngs)
 
     def __call__(self, x):
+        """Forward pass of the model.
+
+        Args:
+            x: Input array
+
+        Returns:
+            Output array
+        """
         x = self.avg_pool(nnx.relu(self.conv1(x)))
         x = self.avg_pool(nnx.relu(self.conv2(x)))
         x = x.reshape(x.shape[0], -1)  # flatten
@@ -44,41 +58,59 @@ class CNN(nnx.Module):
 
 
 class TrainState(nnx.Optimizer):
+    """Train state for the CNN model."""
+
     model: CNN
     tx: optax.GradientTransformation
     metrics: nnx.MultiMetric
 
     def __init__(self, model, tx, metrics: nnx.MultiMetric):
+        """Initializes the train state."""
         self.metrics = metrics
         super().__init__(model, tx)
 
     def update(self, *, grads, **updates):
+        """Updates the train state in-place."""
         self.metrics.update(**updates)
         super().update(grads)
 
     def update_metrics(self, **updates):
+        """Updates the metrics in-place."""
         self.metrics.update(**updates)
 
     def reset_metrics(self):
+        """Resets the metrics."""
         self.metrics.reset()
 
     def compute_metrics(self):
+        """Realizes the metric values."""
         return self.metrics.compute()
 
 
-learning_rate = 0.005
-momentum = 0.9
-
-
+# TODO: Mesh and SPMD parallelism
 class CNNParallelTrainer:
-    def __init__(self, model: CNN, batch_size: int = 64):
+    """Trains a CNN model using NNX and SPMD parallelism."""
+
+    def __init__(
+        self, model: CNN, batch_size: int = 64, learning_rate=0.005, momentum=0.9
+    ):
+        """Initializes the CNN trainer.
+
+        Args:
+            model: The CNN model to train
+            batch_size: The batch size
+            learning_rate: The learning rate
+            momentum: The momentum
+        """
         self.model = model
         self.batch_size = batch_size
         self.jit_train_step = nnx.jit(CNNParallelTrainer.train_step)
         self.jit_eval_step = nnx.jit(CNNParallelTrainer.eval_step)
-        self.state = self._create_train_state()
+        self.state = self._create_train_state(
+            learning_rate=learning_rate, momentum=momentum
+        )
 
-    def _create_train_state(self):
+    def _create_train_state(self, learning_rate: float, momentum: float):
         metrics = nnx.MultiMetric(
             accuracy=nnx.metrics.Accuracy(),
             loss=nnx.metrics.Average("loss"),
@@ -92,7 +124,19 @@ class CNNParallelTrainer:
         train_state: TrainState,
         inputs: jnp.ndarray,
         targets: jnp.ndarray,
-    ) -> tuple[TrainState, jnp.ndarray]:
+    ) -> jnp.ndarray:
+        """Performs a single training step.
+
+        Args:
+            model: The model
+            train_state: The training state
+            inputs: The input data
+            targets: The target data
+
+        Returns:
+            The loss
+        """
+
         def loss_fn(model: CNN):
             # model.set_attributes(deterministic=False, decode=False)
             logits = model(inputs)
@@ -109,6 +153,11 @@ class CNNParallelTrainer:
         return loss
 
     def train(self, train_loader: DataLoader[ImageClassificationBatch]):
+        """Trains the model on the entire training dataset.
+
+        Args:
+            train_loader: The training data loader
+        """
         with Progress(
             SpinnerColumn(),
             *Progress.get_default_columns(),
@@ -138,12 +187,25 @@ class CNNParallelTrainer:
         inputs: jnp.ndarray,
         targets: jnp.ndarray,
     ):
+        """Evaluates the model on a single batch.
+
+        Args:
+            model: The model
+            train_state: The training state
+            inputs: The input data
+            targets: The target data
+        """
         logits = model(inputs)
         train_state.update_metrics(
             loss=0.0, logits=logits, labels=jnp.argmax(targets, axis=-1)
         )
 
     def eval(self, test_loader: DataLoader[ImageClassificationBatch]):
+        """Evaluates the model on the entire test dataset.
+
+        Args:
+            test_loader: The test data loader
+        """
         for batch in test_loader:
             inputs, targets = batch["image"], batch["label"]
             inputs, targets = (
@@ -162,6 +224,13 @@ class CNNParallelTrainer:
     # TODO: Save and load methods
 
 
+"""
+Trains a simple CNN model on the MNIST dataset.
+
+Running on my RTX 3080ti, and loading the dataset from a memmapped file, the training
+only takes ~20 seconds for the full training split and reaches ~98% accuracy on the test
+split.
+"""
 if __name__ == "__main__":
     print("Jax Backend:", jax.default_backend())
 
@@ -170,7 +239,6 @@ if __name__ == "__main__":
 
     print("Loading dataset...")
     batch_size = 64
-    # dataset = mnist_dataset(batch_size=batch_size, shuffle=True)
     dataset = mnist_dataset(
         batch_size=batch_size,
         shuffle=True,
