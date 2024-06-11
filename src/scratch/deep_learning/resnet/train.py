@@ -12,7 +12,6 @@ import typer
 from jaxtyping import Array, Float, PyTree
 from rich.console import Console
 from rich.progress import Progress
-
 from scratch.datasets.dataset import (
     CustomDataLoader,
     CustomImageClassificationBatch,

@@ -13,7 +13,7 @@ def test_loading():
 
     assert dataset.metadata.num_classes == 10
     assert dataset.batch_size == batch_size
-    assert len(dataset.train) == 100
+    assert len(dataset.train) == 100 // batch_size
 
     # Check that the dataset can be loaded
     first = next(iter(dataset.train))
