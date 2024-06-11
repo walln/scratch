@@ -9,11 +9,12 @@ import optax
 from flax import nnx
 from rich.progress import MofNCompleteColumn, Progress, SpinnerColumn, TimeElapsedColumn
 from scratch.datasets.dataset import (
-    CustomDataLoader,
-    CustomImageClassificationBatch,
+    DataLoader,
+)
+from scratch.datasets.image_classification_dataset import (
+    ImageClassificationBatch,
     mnist_dataset,
 )
-from scratch.utils.timer import capture_time
 
 
 @dataclass
@@ -40,10 +41,6 @@ class CNN(nnx.Module):
         x = nnx.relu(self.linear1(x))
         x = self.linear2(x)
         return x
-
-
-# class TrainState(train_state.TrainState):
-#     graphdef: nnx.GraphDef[CNN]
 
 
 class TrainState(nnx.Optimizer):
@@ -111,7 +108,7 @@ class CNNParallelTrainer:
 
         return loss
 
-    def train(self, train_loader: CustomDataLoader[CustomImageClassificationBatch]):
+    def train(self, train_loader: DataLoader[ImageClassificationBatch]):
         with Progress(
             SpinnerColumn(),
             *Progress.get_default_columns(),
@@ -120,11 +117,12 @@ class CNNParallelTrainer:
         ) as progress:
             task = progress.add_task("Training", total=None)
             for batch in train_loader:
-                inputs, targets = batch.unpack()
-                targets = targets.astype(jnp.int32)
-                with capture_time() as step_time:
-                    self.jit_train_step(self.model, self.state, inputs, targets)
-                progress.print(f"Step time: {step_time()}")
+                inputs, targets = batch["image"], batch["label"]
+                inputs, targets = (
+                    inputs.numpy().astype(jnp.float32),
+                    targets.numpy().astype(jnp.int32),
+                )
+                self.jit_train_step(self.model, self.state, inputs, targets)
                 progress.update(task, advance=self.batch_size)
         for (
             metric,
@@ -145,9 +143,13 @@ class CNNParallelTrainer:
             loss=0.0, logits=logits, labels=jnp.argmax(targets, axis=-1)
         )
 
-    def eval(self, test_loader: CustomDataLoader[CustomImageClassificationBatch]):
+    def eval(self, test_loader: DataLoader[ImageClassificationBatch]):
         for batch in test_loader:
-            inputs, targets = batch.unpack()
+            inputs, targets = batch["image"], batch["label"]
+            inputs, targets = (
+                inputs.numpy().astype(jnp.float32),
+                targets.numpy().astype(jnp.int32),
+            )
             self.jit_eval_step(self.model, self.state, inputs, targets)
             break
         for (
@@ -168,7 +170,11 @@ if __name__ == "__main__":
 
     print("Loading dataset...")
     batch_size = 64
-    dataset = mnist_dataset(batch_size=batch_size, shuffle=True)
+    # dataset = mnist_dataset(batch_size=batch_size, shuffle=True)
+    dataset = mnist_dataset(
+        batch_size=batch_size,
+        shuffle=True,
+    )
     print(f"Dataset metadata: {dataset.metadata}")
     assert dataset.test is not None, "Test dataset is None"
 
