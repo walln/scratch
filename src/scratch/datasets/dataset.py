@@ -1,16 +1,5 @@
-"""Custom datasets for use with the scratch framework."""
+"""Custom datasets for use with the scratch framework.
 
-import dataclasses
-from collections.abc import Callable, Iterator
-from typing import Any, Generic, TypeVar
-
-from torch.utils.data import DataLoader as TorchDataLoader
-
-T = TypeVar("T")
-B = TypeVar("B")
-M = TypeVar("M")
-
-"""
 A Note on dataloading:
 ----------------------
 I tried a huge amount to optimize dataloading and experimented with the various options.
@@ -36,9 +25,7 @@ My custom prefetchers are not faster than the default PyTorch DataLoader. So the
 conclusion is that the default PyTorch DataLoader is the best option for pretty much any
 use case that does not require the maximum performance possible and guaranteed
 reproducibility.
-"""
 
-"""
 A Note on transformations:
 --------------------------
 The huggingface datasets library is really good for loading datasets and transforming
@@ -56,6 +43,16 @@ a good idea to keep the data in the NCHW format in the arrow tables and then tra
 it to NHWC when loading it into the model. This is because the NHWC format is faster for
 the model to read and the NCHW format is faster for the arrow tables to read.
 """
+
+import dataclasses
+from collections.abc import Callable, Iterator
+from typing import Any, Generic, TypeVar
+
+from torch.utils.data import DataLoader as TorchDataLoader
+
+T = TypeVar("T")
+B = TypeVar("B")
+M = TypeVar("M")
 
 
 class DataLoader(Generic[B]):
