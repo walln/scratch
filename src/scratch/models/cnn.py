@@ -7,6 +7,8 @@ from typing import Literal
 import jax
 import jax.numpy as jnp
 import optax
+import orbax
+import orbax.checkpoint
 from flax import nnx
 from jax.sharding import Mesh, NamedSharding, PartitionSpec
 from rich.console import Console
@@ -106,9 +108,12 @@ class CNNParallelTrainerConfig:
     """The number of epochs to train for."""
     console: Console = console
     """The console to use for logging."""
+    checkpoint_path: str = "checkpoints/nnx-cnn/mnist"
+    """The path to save the checkpoints."""
+    resume_checkpoint: bool = False
+    """Whether to resume training from a checkpoint."""
 
 
-# TODO: Mesh and SPMD parallelism
 class CNNParallelTrainer:
     """Trains a CNN model using NNX and SPMD parallelism."""
 
@@ -128,6 +133,26 @@ class CNNParallelTrainer:
             learning_rate=trainer_config.learning_rate, momentum=trainer_config.momentum
         )
         self.mesh = Mesh(jax.devices(), ("x",))
+
+        checkpointer_options = orbax.checkpoint.CheckpointManagerOptions(max_to_keep=3)
+        self.checkpoint_manager = orbax.checkpoint.CheckpointManager(
+            self.train_config.checkpoint_path,
+            item_names=("model"),
+            options=checkpointer_options,
+        )
+
+    def save_checkpoint(self, step: int, metrics: dict):
+        """Saves a checkpoint of the model and optimizer state.
+
+        Args:
+            step: The current step
+            metrics: The metrics to save
+        """
+        self.checkpoint_manager.save(
+            step=step,
+            metrics=metrics,
+            args=orbax.checkpoint.args.Composite(model=nnx.state(self.model)),
+        )
 
     def _create_train_state(self, learning_rate: float, momentum: float):
         metrics = nnx.MultiMetric(
@@ -164,6 +189,8 @@ class CNNParallelTrainer:
     def log_metrics(self, step_type: Literal["train", "eval"], progress: Progress):
         """Logs the metrics from the training state and resets them.
 
+        Also returns a dict of the computed metrics.
+
         Args:
             step_type: The type of step
             progress: The progress manager
@@ -176,7 +203,9 @@ class CNNParallelTrainer:
                 continue
 
             progress.log(f"{step_type}_{metric}: {value}")
+        computed_metrics = self.state.compute_metrics()
         self.state.reset_metrics()
+        return computed_metrics
 
     @staticmethod
     def train_step(
@@ -217,12 +246,14 @@ class CNNParallelTrainer:
         train_loader: DataLoader[ImageClassificationBatch],
         *,
         progress: Progress | None = None,
+        epoch: int | None = None,
     ):
         """Trains the model on the entire training dataset.
 
         Args:
             train_loader: The training data loader
             progress: The progress manager
+            epoch: The current epoch
         """
         with self.mesh:
             # Define named sharding
@@ -254,7 +285,11 @@ class CNNParallelTrainer:
                     )
                     self.jit_train_step(self.model, self.state, inputs, targets)
                     progress.update(task, advance=self.train_config.batch_size)
-            self.log_metrics("train", progress)
+            metrics = self.log_metrics("train", progress)
+            self.save_checkpoint(
+                step=epoch * len(train_loader) if epoch and len(train_loader) else 0,
+                metrics=metrics,
+            )
 
     @staticmethod
     def eval_step(
