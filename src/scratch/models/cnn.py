@@ -2,12 +2,15 @@
 
 from dataclasses import dataclass
 from functools import partial
+from typing import Literal
 
 import jax
 import jax.numpy as jnp
 import optax
 from flax import nnx
-from rich.progress import MofNCompleteColumn, Progress, SpinnerColumn, TimeElapsedColumn
+from jax.sharding import Mesh, NamedSharding, PartitionSpec
+from rich.console import Console
+from rich.progress import Progress
 from scratch.datasets.dataset import (
     DataLoader,
 )
@@ -15,6 +18,8 @@ from scratch.datasets.image_classification_dataset import (
     ImageClassificationBatch,
     mnist_dataset,
 )
+from scratch.utils.logging import console, get_progress_widgets
+from scratch.utils.timer import capture_time
 
 
 @dataclass
@@ -87,28 +92,42 @@ class TrainState(nnx.Optimizer):
         return self.metrics.compute()
 
 
+@dataclass
+class CNNParallelTrainerConfig:
+    """Configuration for the CNNParallelTrainer."""
+
+    batch_size: int = 64
+    """The global batch size to be sharded across all devices."""
+    learning_rate: float = 0.005
+    """The learning rate for the optimizer."""
+    momentum: float = 0.9
+    """The momentum for the optimizer."""
+    epochs: int = 2
+    """The number of epochs to train for."""
+    console: Console = console
+    """The console to use for logging."""
+
+
 # TODO: Mesh and SPMD parallelism
 class CNNParallelTrainer:
     """Trains a CNN model using NNX and SPMD parallelism."""
 
-    def __init__(
-        self, model: CNN, batch_size: int = 64, learning_rate=0.005, momentum=0.9
-    ):
+    def __init__(self, model: CNN, trainer_config: CNNParallelTrainerConfig):
         """Initializes the CNN trainer.
 
         Args:
             model: The CNN model to train
-            batch_size: The batch size
-            learning_rate: The learning rate
-            momentum: The momentum
+            trainer_config: The configuration for the trainer
         """
+        self.console = console
         self.model = model
-        self.batch_size = batch_size
+        self.train_config = trainer_config
         self.jit_train_step = nnx.jit(CNNParallelTrainer.train_step)
         self.jit_eval_step = nnx.jit(CNNParallelTrainer.eval_step)
         self.state = self._create_train_state(
-            learning_rate=learning_rate, momentum=momentum
+            learning_rate=trainer_config.learning_rate, momentum=trainer_config.momentum
         )
+        self.mesh = Mesh(jax.devices(), ("x",))
 
     def _create_train_state(self, learning_rate: float, momentum: float):
         metrics = nnx.MultiMetric(
@@ -117,6 +136,47 @@ class CNNParallelTrainer:
         )
         state = TrainState(self.model, optax.adamw(learning_rate, momentum), metrics)
         return state
+
+    def train_and_evaluate(self, train_loader, test_loader):
+        """Trains and evaluates the model for the specified number of epochs.
+
+        Args:
+            train_loader: The training data loader
+            test_loader: The test data loader
+        """
+        self.console.log(f"Running on {jax.default_backend()} backend")
+        self.console.log(f"Using {jax.device_count()} devices")
+        self.console.log("Beginning training and evaluation")
+
+        for epoch in range(self.train_config.epochs):
+            console.rule(f"Epoch {epoch + 1}/{self.train_config.epochs}")
+            with Progress(
+                *get_progress_widgets(), console=self.console, transient=True
+            ) as progress:
+                with capture_time() as train_time:
+                    self.train(train_loader, progress=progress)
+                with capture_time() as eval_time:
+                    self.eval(test_loader, progress=progress)
+            console.log(f"train_time: {train_time():.2f}s")
+            console.log(f"eval_time: {eval_time():.2f}s")
+            console.log(f"total_time: {train_time() + eval_time():.2f}s")
+
+    def log_metrics(self, step_type: Literal["train", "eval"], progress: Progress):
+        """Logs the metrics from the training state and resets them.
+
+        Args:
+            step_type: The type of step
+            progress: The progress manager
+        """
+        for (
+            metric,
+            value,
+        ) in self.state.compute_metrics().items():
+            if step_type == "eval" and metric == "loss":
+                continue
+
+            progress.log(f"{step_type}_{metric}: {value}")
+        self.state.reset_metrics()
 
     @staticmethod
     def train_step(
@@ -152,33 +212,49 @@ class CNNParallelTrainer:
 
         return loss
 
-    def train(self, train_loader: DataLoader[ImageClassificationBatch]):
+    def train(
+        self,
+        train_loader: DataLoader[ImageClassificationBatch],
+        *,
+        progress: Progress | None = None,
+    ):
         """Trains the model on the entire training dataset.
 
         Args:
             train_loader: The training data loader
+            progress: The progress manager
         """
-        with Progress(
-            SpinnerColumn(),
-            *Progress.get_default_columns(),
-            MofNCompleteColumn(),
-            TimeElapsedColumn(),
-        ) as progress:
-            task = progress.add_task("Training", total=None)
-            for batch in train_loader:
-                inputs, targets = batch["image"], batch["label"]
-                inputs, targets = (
-                    inputs.numpy().astype(jnp.float32),
-                    targets.numpy().astype(jnp.int32),
+        with self.mesh:
+            # Define named sharding
+            input_sharding = NamedSharding(self.mesh, PartitionSpec("x"))
+            target_sharding = NamedSharding(self.mesh, PartitionSpec("x"))
+
+            with (
+                progress
+                if progress
+                else Progress(
+                    *get_progress_widgets(), console=self.console, transient=True
+                ) as progress
+            ):
+                task = progress.add_task(
+                    "Training",
+                    total=len(train_loader) * self.train_config.batch_size
+                    if len(train_loader)
+                    else None,
                 )
-                self.jit_train_step(self.model, self.state, inputs, targets)
-                progress.update(task, advance=self.batch_size)
-        for (
-            metric,
-            value,
-        ) in self.state.compute_metrics().items():
-            print(f"train_{metric}: {value}")
-        self.state.reset_metrics()
+                for batch in train_loader:
+                    inputs, targets = batch["image"], batch["label"]
+                    inputs, targets = (
+                        jax.device_put(
+                            inputs.numpy().astype(jnp.float32), input_sharding
+                        ),
+                        jax.device_put(
+                            targets.numpy().astype(jnp.int32), target_sharding
+                        ),
+                    )
+                    self.jit_train_step(self.model, self.state, inputs, targets)
+                    progress.update(task, advance=self.train_config.batch_size)
+            self.log_metrics("train", progress)
 
     @staticmethod
     def eval_step(
@@ -200,26 +276,49 @@ class CNNParallelTrainer:
             loss=0.0, logits=logits, labels=jnp.argmax(targets, axis=-1)
         )
 
-    def eval(self, test_loader: DataLoader[ImageClassificationBatch]):
+    def eval(
+        self,
+        test_loader: DataLoader[ImageClassificationBatch],
+        *,
+        progress: Progress | None = None,
+    ):
         """Evaluates the model on the entire test dataset.
 
         Args:
             test_loader: The test data loader
+            progress: The progress manager
         """
-        for batch in test_loader:
-            inputs, targets = batch["image"], batch["label"]
-            inputs, targets = (
-                inputs.numpy().astype(jnp.float32),
-                targets.numpy().astype(jnp.int32),
-            )
-            self.jit_eval_step(self.model, self.state, inputs, targets)
-            break
-        for (
-            metric,
-            value,
-        ) in self.state.compute_metrics().items():
-            print(f"test_{metric}: {value}")
-        self.state.reset_metrics()
+        with self.mesh:
+            # Define named sharding
+            input_sharding = NamedSharding(self.mesh, PartitionSpec("x"))
+            target_sharding = NamedSharding(self.mesh, PartitionSpec("x"))
+
+            with (
+                progress
+                if progress
+                else Progress(
+                    *get_progress_widgets(), console=self.console, transient=True
+                ) as progress
+            ):
+                task = progress.add_task(
+                    "Evaluating",
+                    total=len(test_loader) * self.train_config.batch_size
+                    if len(test_loader)
+                    else None,
+                )
+                for batch in test_loader:
+                    inputs, targets = batch["image"], batch["label"]
+                    inputs, targets = (
+                        jax.device_put(
+                            inputs.numpy().astype(jnp.float32), input_sharding
+                        ),
+                        jax.device_put(
+                            targets.numpy().astype(jnp.int32), target_sharding
+                        ),
+                    )
+                    self.jit_eval_step(self.model, self.state, inputs, targets)
+                    progress.update(task, advance=self.train_config.batch_size)
+            self.log_metrics("eval", progress)
 
     # TODO: Save and load methods
 
@@ -228,26 +327,29 @@ class CNNParallelTrainer:
 Trains a simple CNN model on the MNIST dataset.
 
 Running on my RTX 3080ti, and loading the dataset from a memmapped file, the training
-only takes ~20 seconds for the full training split and reaches ~98% accuracy on the test
-split.
+only takes ~20 seconds for an epoch the full training split and reaches ~98% accuracy on
+the test split.
+
+Will likely be even faster on a TPU or a multi-GPU setup. The trainer naturally supports
+SPMD parallelism and can be easily adapted to use multiple devices with no changes.
+
+The simple CNN model is too simple for decent MFU and the bottleneck is the data loading
 """
 if __name__ == "__main__":
-    print("Jax Backend:", jax.default_backend())
-
+    console.log("Configuring model")
     model_config = CNNConfig()
     model = CNN(model_config, rngs=nnx.Rngs(0))
 
-    print("Loading dataset...")
+    console.log("Loading dataset")
     batch_size = 64
     dataset = mnist_dataset(
         batch_size=batch_size,
         shuffle=True,
     )
-    print(f"Dataset metadata: {dataset.metadata}")
+
+    console.log(f"Dataset metadata: {dataset.metadata}")
     assert dataset.test is not None, "Test dataset is None"
 
-    trainer = CNNParallelTrainer(model, batch_size=batch_size)
-    print("Training")
-    trainer.train(train_loader=dataset.train)
-    print("Evaluating")
-    trainer.eval(test_loader=dataset.test)
+    trainer_config = CNNParallelTrainerConfig(batch_size=batch_size)
+    trainer = CNNParallelTrainer(model, trainer_config)
+    trainer.train_and_evaluate(dataset.train, dataset.test)
