@@ -80,4 +80,4 @@ url = "https://storage.googleapis.com/jax-releases/jax_cuda_releases.html"
 
 
 [tool.rye.scripts]
-monitor = { cmd = "nvtop", description = "Monitor GPU usage"}
+monitor_wsl = { cmd = "nvitop", description = "Monitor GPU usage", env = { TERM = "xterm-256color", TERMINFO = "/usr/lib/terminfo" } }
