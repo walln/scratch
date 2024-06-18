@@ -1,22 +1,22 @@
-"""Test the MNIST dataset."""
+"""Test the tiny_imagenet dataset."""
 
-from scratch.datasets.image_classification_dataset import mnist_dataset
+from scratch.datasets.image_classification_dataset import tiny_imagenet_dataset
 
 
 def test_loading():
-    """Test that the MNIST dataset can be loaded."""
+    """Test that the tiny_imagenet dataset can be loaded."""
     batch_size = 4
-    dataset = mnist_dataset(batch_size=batch_size)
+    dataset = tiny_imagenet_dataset(batch_size=batch_size)
 
-    assert dataset.metadata.num_classes == 10
+    assert dataset.metadata.num_classes == 200
     assert dataset.batch_size == batch_size
 
     # Check that the dataset can be loaded
     first = next(iter(dataset.train))
     assert first["image"].numpy().shape == (
         batch_size,
-        28,
-        28,
-        1,
+        64,
+        64,
+        3,
     )
     assert first["label"].numpy().shape == (batch_size, dataset.metadata.num_classes)

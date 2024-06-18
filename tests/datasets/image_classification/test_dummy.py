@@ -18,11 +18,11 @@ def test_loading():
 
     # Check that the dataset can be loaded
     first = next(iter(dataset.train))
-    assert first["image"].shape == (
+    assert first["image"].numpy().shape == (
         batch_size,
         *shape,
     )
     assert isinstance(first["image"], Tensor)
 
-    assert first["label"].shape == (batch_size, dataset.metadata.num_classes)
+    assert first["label"].numpy().shape == (batch_size, dataset.metadata.num_classes)
     assert isinstance(first["label"], Tensor)

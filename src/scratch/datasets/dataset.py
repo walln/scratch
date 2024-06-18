@@ -80,7 +80,10 @@ class DataLoader(Generic[B]):
 
     def __len__(self):
         """Return the number of batches."""
-        return len(self.loader)
+        try:
+            return len(self.loader)
+        except Exception:
+            return 0
 
 
 @dataclasses.dataclass
