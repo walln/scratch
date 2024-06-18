@@ -235,7 +235,6 @@ class ImageClassificationParallelTrainer(Generic[M]):
         """
 
         def loss_fn(model: Callable):
-            # model.set_attributes(deterministic=False, decode=False)
             logits = model(inputs)
             assert logits.shape == targets.shape
             loss = optax.softmax_cross_entropy(logits=logits, labels=targets).mean()
@@ -243,6 +242,7 @@ class ImageClassificationParallelTrainer(Generic[M]):
 
         grad_fn = nnx.value_and_grad(loss_fn, has_aux=True)
         (loss, logits), grads = grad_fn(model)
+
         train_state.update(
             grads=grads, loss=loss, logits=logits, labels=jnp.argmax(targets, axis=-1)
         )

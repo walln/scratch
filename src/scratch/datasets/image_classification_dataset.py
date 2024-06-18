@@ -1,5 +1,7 @@
 """Dataset utilities for image classification."""
 
+import inspect
+import warnings
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TypedDict
@@ -15,6 +17,42 @@ from scratch.datasets.dataset import (
     DataLoader,
     Dataset,
 )
+
+
+def patch_datasets_warning():
+    """Patch the warning message for datasets.
+
+    The warning message is due to a bug? in the huggingface datasets library.
+    It might be logically correct but pytorch warns on using the spread operator to copy
+    tensors rather than using the clone method.
+    """
+    warning_message = "To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor)."  # noqa: E501
+    warnings.filterwarnings("ignore", message=warning_message, category=UserWarning)
+
+    def filter_specific_warning(warning):
+        """Custom filter function to ignore a warning coming from a specific file."""
+        if warning.category is UserWarning:
+            # Get the current frame
+            frame = inspect.currentframe()
+            # Go back to the frame where the warning was issued
+            while frame:
+                filename = frame.f_code.co_filename
+                if filename.endswith("datasets/formatting/torch_formatter.py"):
+                    print("HERE")
+
+                    return True
+                frame = frame.f_back
+        return False
+
+    # Register the custom filter
+    warnings.filterwarnings("ignore", category=UserWarning, module=r".*")
+    warnings.showwarning = (
+        lambda message, category, filename, lineno, file=None, line=None: None
+        if filter_specific_warning(
+            warnings.WarningMessage(message, category, filename, lineno)
+        )
+        else warnings.showwarning(message, category, filename, lineno)
+    )
 
 
 class ImageClassificationBatch(TypedDict):
@@ -41,8 +79,8 @@ def create_dataset(
     metadata: ImageClassificationDatasetMetadata,
     train_data,
     test_data,
-    transform: Callable[[ImageClassificationBatch], ImageClassificationBatch],
     batch_size: int,
+    transform: Callable[[ImageClassificationBatch], ImageClassificationBatch] | None,
     collate_fn: Callable | None = None,
     *,
     shuffle: bool,
@@ -208,15 +246,22 @@ def tiny_imagenet_dataset(batch_size=32, shuffle=True):
     def prepare(sample):
         images, labels = sample["image"], sample["label"]
         # Ensure the images are float tensors
-        images = images.to(torch.float32)
+        images = images.clone().detach().to(torch.float32)
         # Normalize the images
         images = images / 255.0
         # Convert labels to one-hot encoding
-        labels = labels.to(torch.int64)  # Ensure labels are int32 tensors
+        labels = labels.clone().detach().to(torch.int64)  # Ensure labels are int32
         labels = F.one_hot(labels, num_classes=200).to(torch.int32)
 
         sample["image"], sample["label"] = images, labels
         return sample
+
+    def validate(sample):
+        return (
+            sample["image"].shape == (64, 64, 3)
+            and torch.isnan(sample["image"]).sum() == 0
+            and torch.isinf(sample["image"]).sum() == 0
+        )
 
     train_data = (
         load_dataset(
@@ -226,7 +271,7 @@ def tiny_imagenet_dataset(batch_size=32, shuffle=True):
             streaming=True,
         )
         .with_format("torch")
-        .filter(lambda x: x["image"].shape == (64, 64, 3))
+        .filter(validate)
         .map(prepare)
     )
     test_data = (
@@ -237,7 +282,7 @@ def tiny_imagenet_dataset(batch_size=32, shuffle=True):
             streaming=True,
         )
         .with_format("torch")
-        .filter(lambda x: x["image"].shape == (64, 64, 3))
+        .filter(validate)
         .map(prepare)
     )
 
@@ -249,7 +294,7 @@ def tiny_imagenet_dataset(batch_size=32, shuffle=True):
         metadata=metadata,
         train_data=train_data,
         test_data=test_data,
-        transform=lambda x: x,
         batch_size=batch_size,
         shuffle=False,
+        transform=None,
     )
