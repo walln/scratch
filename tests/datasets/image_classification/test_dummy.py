@@ -3,6 +3,7 @@
 from scratch.datasets.image_classification_dataset import (
     dummy_image_classification_dataset,
 )
+from torch import Tensor
 
 
 def test_loading():
@@ -21,4 +22,7 @@ def test_loading():
         batch_size,
         *shape,
     )
+    assert isinstance(first["image"], Tensor)
+
     assert first["label"].shape == (batch_size, dataset.metadata.num_classes)
+    assert isinstance(first["label"], Tensor)
