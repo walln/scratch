@@ -193,3 +193,63 @@ def mnist_dataset(batch_size=32, shuffle=True):
         batch_size=batch_size,
         shuffle=shuffle,
     )
+
+
+# TODO: Albumentations augmentations
+def tiny_imagenet_dataset(batch_size=32, shuffle=True):
+    """Load the Tiny ImageNet dataset and return a Dataset object.
+
+    Args:
+    ----
+        batch_size: the batch size
+        shuffle: whether to shuffle the dataset
+    """
+
+    def prepare(sample):
+        images, labels = sample["image"], sample["label"]
+        # Ensure the images are float tensors
+        images = images.to(torch.float32)
+        # Normalize the images
+        images = images / 255.0
+        # Convert labels to one-hot encoding
+        labels = labels.to(torch.int64)  # Ensure labels are int32 tensors
+        labels = F.one_hot(labels, num_classes=200).to(torch.int32)
+
+        sample["image"], sample["label"] = images, labels
+        return sample
+
+    train_data = (
+        load_dataset(
+            "zh-plus/tiny-imagenet",
+            split="train",
+            trust_remote_code=True,
+            streaming=True,
+        )
+        .with_format("torch")
+        .filter(lambda x: x["image"].shape == (64, 64, 3))
+        .map(prepare)
+    )
+    test_data = (
+        load_dataset(
+            "zh-plus/tiny-imagenet",
+            split="valid",
+            trust_remote_code=True,
+            streaming=True,
+        )
+        .with_format("torch")
+        .filter(lambda x: x["image"].shape == (64, 64, 3))
+        .map(prepare)
+    )
+
+    metadata = ImageClassificationDatasetMetadata(
+        num_classes=200, input_shape=(64, 64, 3), name="tiny_imagenet"
+    )
+
+    return create_dataset(
+        metadata=metadata,
+        train_data=train_data,
+        test_data=test_data,
+        transform=lambda x: x,
+        batch_size=batch_size,
+        shuffle=False,
+    )
