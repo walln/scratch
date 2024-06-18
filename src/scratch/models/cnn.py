@@ -1,5 +1,6 @@
 """CNN Model using NNX api from Flax."""
 
+import os
 from dataclasses import dataclass
 from functools import partial
 from typing import Literal
@@ -98,7 +99,7 @@ class TrainState(nnx.Optimizer):
 class CNNParallelTrainerConfig:
     """Configuration for the CNNParallelTrainer."""
 
-    batch_size: int = 64
+    batch_size: int = 32
     """The global batch size to be sharded across all devices."""
     learning_rate: float = 0.005
     """The learning rate for the optimizer."""
@@ -110,8 +111,15 @@ class CNNParallelTrainerConfig:
     """The console to use for logging."""
     checkpoint_path: str = "checkpoints/nnx-cnn/mnist"
     """The path to save the checkpoints."""
+    save_checkpoint: bool = True
+    """Whether to save checkpoints."""
     resume_checkpoint: bool = False
     """Whether to resume training from a checkpoint."""
+
+    def __post_init__(self):
+        """Ensure checkpoint_path is absolute."""
+        if not os.path.isabs(self.checkpoint_path):
+            self.checkpoint_path = os.path.abspath(self.checkpoint_path)
 
 
 class CNNParallelTrainer:
@@ -134,10 +142,12 @@ class CNNParallelTrainer:
         )
         self.mesh = Mesh(jax.devices(), ("x",))
 
-        checkpointer_options = orbax.checkpoint.CheckpointManagerOptions(max_to_keep=3)
+        checkpointer_options = orbax.checkpoint.CheckpointManagerOptions(
+            max_to_keep=3, cleanup_tmp_directories=True
+        )
         self.checkpoint_manager = orbax.checkpoint.CheckpointManager(
             self.train_config.checkpoint_path,
-            item_names=("model"),
+            item_names=("model", "opt_state", "metadata"),
             options=checkpointer_options,
         )
 
@@ -148,11 +158,49 @@ class CNNParallelTrainer:
             step: The current step
             metrics: The metrics to save
         """
+        self.console.log(f"Saving checkpoint at step {step}")
+        state = nnx.state(self.model)
+        opt_state = self.state.opt_state
+        metadata = {
+            "batch_size": self.train_config.batch_size,
+            "momentum": self.train_config.momentum,
+            "learning_rate": self.train_config.learning_rate,
+        }
         self.checkpoint_manager.save(
             step=step,
             metrics=metrics,
-            args=orbax.checkpoint.args.Composite(model=nnx.state(self.model)),
+            args=orbax.checkpoint.args.Composite(
+                model=orbax.checkpoint.args.PyTreeSave(state),  # type: ignore - orbax types kinda suck
+                opt_state=orbax.checkpoint.args.PyTreeSave(opt_state),  # type: ignore - orbax types kinda suck
+                metadata=orbax.checkpoint.args.JsonSave(metadata),  # type: ignore - orbax types kinda suck
+            ),
         )
+        self.checkpoint_manager.wait_until_finished()
+
+    def load_checkpoint(self, step: int = 0):
+        """Loads the latest checkpoint."""
+        model = nnx.eval_shape(lambda: self.model)
+        state = nnx.state(model)
+
+        opt_state = self.state.opt_state
+
+        metadata = {
+            "batch_size": self.train_config.batch_size,
+            "momentum": self.train_config.momentum,
+            "learning_rate": self.train_config.learning_rate,
+        }
+
+        self.checkpoint_manager.restore(
+            step=step,
+            args=orbax.checkpoint.args.Composite(
+                model=orbax.checkpoint.args.PyTreeRestore(state),  # type: ignore - orbax types kinda suck
+                opt_state=orbax.checkpoint.args.PyTreeRestore(opt_state),  # type: ignore - orbax types kinda suck
+                metadata=orbax.checkpoint.args.JsonRestore(metadata),  # type: ignore - orbax types kinda suck
+            ),
+        )
+
+        console.log(f"Loaded checkpoint at step {step}")
+        console.log(f"Loaded metadata: {metadata}")
 
     def _create_train_state(self, learning_rate: float, momentum: float):
         metrics = nnx.MultiMetric(
@@ -179,9 +227,9 @@ class CNNParallelTrainer:
                 *get_progress_widgets(), console=self.console, transient=True
             ) as progress:
                 with capture_time() as train_time:
-                    self.train(train_loader, progress=progress)
+                    self.train(train_loader, progress=progress, epoch=epoch)
                 with capture_time() as eval_time:
-                    self.eval(test_loader, progress=progress)
+                    self.eval(test_loader, progress=progress, epoch=epoch)
             console.log(f"train_time: {train_time():.2f}s")
             console.log(f"eval_time: {eval_time():.2f}s")
             console.log(f"total_time: {train_time() + eval_time():.2f}s")
@@ -285,11 +333,7 @@ class CNNParallelTrainer:
                     )
                     self.jit_train_step(self.model, self.state, inputs, targets)
                     progress.update(task, advance=self.train_config.batch_size)
-            metrics = self.log_metrics("train", progress)
-            self.save_checkpoint(
-                step=epoch * len(train_loader) if epoch and len(train_loader) else 0,
-                metrics=metrics,
-            )
+            self.log_metrics("train", progress)
 
     @staticmethod
     def eval_step(
@@ -316,12 +360,14 @@ class CNNParallelTrainer:
         test_loader: DataLoader[ImageClassificationBatch],
         *,
         progress: Progress | None = None,
+        epoch: int | None = None,
     ):
         """Evaluates the model on the entire test dataset.
 
         Args:
             test_loader: The test data loader
             progress: The progress manager
+            epoch: The current epoch
         """
         with self.mesh:
             # Define named sharding
@@ -353,9 +399,14 @@ class CNNParallelTrainer:
                     )
                     self.jit_eval_step(self.model, self.state, inputs, targets)
                     progress.update(task, advance=self.train_config.batch_size)
-            self.log_metrics("eval", progress)
-
-    # TODO: Save and load methods
+            metrics = self.log_metrics("eval", progress)
+            if self.train_config.save_checkpoint:
+                self.save_checkpoint(
+                    step=epoch * len(test_loader) * self.train_config.batch_size
+                    if epoch and len(test_loader)
+                    else 0,
+                    metrics=metrics,
+                )
 
 
 """
