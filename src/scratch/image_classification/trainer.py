@@ -1,74 +1,32 @@
-"""CNN Model using NNX api from Flax."""
+"""Image classification trainer."""
 
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
-from functools import partial
-from typing import Literal
+from typing import Generic, Literal, TypeVar
 
 import jax
 import jax.numpy as jnp
 import optax
 import orbax
 import orbax.checkpoint
+import orbax.checkpoint as ocp
 from flax import nnx
 from jax.sharding import Mesh, NamedSharding, PartitionSpec
 from rich.console import Console
 from rich.progress import Progress
-from scratch.datasets.dataset import (
-    DataLoader,
-)
-from scratch.datasets.image_classification_dataset import (
-    ImageClassificationBatch,
-    mnist_dataset,
-)
+from scratch.datasets.dataset import DataLoader
+from scratch.datasets.image_classification_dataset import ImageClassificationBatch
 from scratch.utils.logging import console, get_progress_widgets
 from scratch.utils.timer import capture_time
 
-
-@dataclass
-class CNNConfig:
-    """Configuration for the CNN model."""
-
-    num_classes: int = 10
+M = TypeVar("M", bound=nnx.Module)
 
 
-class CNN(nnx.Module):
-    """A simple CNN model."""
-
-    def __init__(self, config: CNNConfig, *, rngs: nnx.Rngs):
-        """Initializes the simple CNN model.
-
-        Args:
-            config: Configuration for the model
-            rngs: Random number generators
-        """
-        self.conv1 = nnx.Conv(1, 32, kernel_size=(3, 3), rngs=rngs)
-        self.conv2 = nnx.Conv(32, 64, kernel_size=(3, 3), rngs=rngs)
-        self.avg_pool = partial(nnx.avg_pool, window_shape=(2, 2), strides=(2, 2))
-        self.linear1 = nnx.Linear(3136, 256, rngs=rngs)
-        self.linear2 = nnx.Linear(256, config.num_classes, rngs=rngs)
-
-    def __call__(self, x):
-        """Forward pass of the model.
-
-        Args:
-            x: Input array
-
-        Returns:
-            Output array
-        """
-        x = self.avg_pool(nnx.relu(self.conv1(x)))
-        x = self.avg_pool(nnx.relu(self.conv2(x)))
-        x = x.reshape(x.shape[0], -1)  # flatten
-        x = nnx.relu(self.linear1(x))
-        x = self.linear2(x)
-        return x
-
-
-class TrainState(nnx.Optimizer):
+class TrainState(Generic[M], nnx.Optimizer):
     """Train state for the CNN model."""
 
-    model: CNN
+    model: M
     tx: optax.GradientTransformation
     metrics: nnx.MultiMetric
 
@@ -96,16 +54,16 @@ class TrainState(nnx.Optimizer):
 
 
 @dataclass
-class CNNParallelTrainerConfig:
+class ImageClassificationParallelTrainerConfig:
     """Configuration for the CNNParallelTrainer."""
 
-    batch_size: int = 32
+    batch_size: int = 64
     """The global batch size to be sharded across all devices."""
     learning_rate: float = 0.005
     """The learning rate for the optimizer."""
     momentum: float = 0.9
     """The momentum for the optimizer."""
-    epochs: int = 2
+    epochs: int = 10
     """The number of epochs to train for."""
     console: Console = console
     """The console to use for logging."""
@@ -122,10 +80,12 @@ class CNNParallelTrainerConfig:
             self.checkpoint_path = os.path.abspath(self.checkpoint_path)
 
 
-class CNNParallelTrainer:
+class ImageClassificationParallelTrainer(Generic[M]):
     """Trains a CNN model using NNX and SPMD parallelism."""
 
-    def __init__(self, model: CNN, trainer_config: CNNParallelTrainerConfig):
+    def __init__(
+        self, model: M, trainer_config: ImageClassificationParallelTrainerConfig
+    ):
         """Initializes the CNN trainer.
 
         Args:
@@ -135,8 +95,8 @@ class CNNParallelTrainer:
         self.console = console
         self.model = model
         self.train_config = trainer_config
-        self.jit_train_step = nnx.jit(CNNParallelTrainer.train_step)
-        self.jit_eval_step = nnx.jit(CNNParallelTrainer.eval_step)
+        self.jit_train_step = nnx.jit(ImageClassificationParallelTrainer.train_step)
+        self.jit_eval_step = nnx.jit(ImageClassificationParallelTrainer.eval_step)
         self.state = self._create_train_state(
             learning_rate=trainer_config.learning_rate, momentum=trainer_config.momentum
         )
@@ -145,7 +105,7 @@ class CNNParallelTrainer:
         checkpointer_options = orbax.checkpoint.CheckpointManagerOptions(
             max_to_keep=3, cleanup_tmp_directories=True
         )
-        self.checkpoint_manager = orbax.checkpoint.CheckpointManager(
+        self.checkpoint_manager = ocp.CheckpointManager(
             self.train_config.checkpoint_path,
             item_names=("model", "opt_state", "metadata"),
             options=checkpointer_options,
@@ -192,10 +152,10 @@ class CNNParallelTrainer:
 
         self.checkpoint_manager.restore(
             step=step,
-            args=orbax.checkpoint.args.Composite(
-                model=orbax.checkpoint.args.PyTreeRestore(state),  # type: ignore - orbax types kinda suck
-                opt_state=orbax.checkpoint.args.PyTreeRestore(opt_state),  # type: ignore - orbax types kinda suck
-                metadata=orbax.checkpoint.args.JsonRestore(metadata),  # type: ignore - orbax types kinda suck
+            args=ocp.args.Composite(
+                model=ocp.args.PyTreeRestore(state),  # type: ignore - orbax types kinda suck
+                opt_state=ocp.args.PyTreeRestore(opt_state),  # type: ignore - orbax types kinda suck
+                metadata=ocp.args.JsonRestore(metadata),  # type: ignore - orbax types kinda suck
             ),
         )
 
@@ -257,7 +217,7 @@ class CNNParallelTrainer:
 
     @staticmethod
     def train_step(
-        model: CNN,
+        model: M,
         train_state: TrainState,
         inputs: jnp.ndarray,
         targets: jnp.ndarray,
@@ -274,7 +234,7 @@ class CNNParallelTrainer:
             The loss
         """
 
-        def loss_fn(model: CNN):
+        def loss_fn(model: Callable):
             # model.set_attributes(deterministic=False, decode=False)
             logits = model(inputs)
             assert logits.shape == targets.shape
@@ -337,7 +297,7 @@ class CNNParallelTrainer:
 
     @staticmethod
     def eval_step(
-        model: CNN,
+        model: M,
         train_state: TrainState,
         inputs: jnp.ndarray,
         targets: jnp.ndarray,
@@ -350,7 +310,7 @@ class CNNParallelTrainer:
             inputs: The input data
             targets: The target data
         """
-        logits = model(inputs)
+        logits = model(inputs)  # type: ignore - model is a generic and python generic interescion types are not supported
         train_state.update_metrics(
             loss=0.0, logits=logits, labels=jnp.argmax(targets, axis=-1)
         )
@@ -407,35 +367,3 @@ class CNNParallelTrainer:
                     else 0,
                     metrics=metrics,
                 )
-
-
-"""
-Trains a simple CNN model on the MNIST dataset.
-
-Running on my RTX 3080ti, and loading the dataset from a memmapped file, the training
-only takes ~20 seconds for an epoch the full training split and reaches ~98% accuracy on
-the test split.
-
-Will likely be even faster on a TPU or a multi-GPU setup. The trainer naturally supports
-SPMD parallelism and can be easily adapted to use multiple devices with no changes.
-
-The simple CNN model is too simple for decent MFU and the bottleneck is the data loading
-"""
-if __name__ == "__main__":
-    console.log("Configuring model")
-    model_config = CNNConfig()
-    model = CNN(model_config, rngs=nnx.Rngs(0))
-
-    console.log("Loading dataset")
-    batch_size = 64
-    dataset = mnist_dataset(
-        batch_size=batch_size,
-        shuffle=True,
-    )
-
-    console.log(f"Dataset metadata: {dataset.metadata}")
-    assert dataset.test is not None, "Test dataset is None"
-
-    trainer_config = CNNParallelTrainerConfig(batch_size=batch_size)
-    trainer = CNNParallelTrainer(model, trainer_config)
-    trainer.train_and_evaluate(dataset.train, dataset.test)

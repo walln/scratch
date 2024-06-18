@@ -128,10 +128,8 @@ def dummy_image_classification_dataset(
         int32 format.
         """
         image, label = batch["image"], batch["label"]
-        image = image.numpy().astype(np.float32)
-        label = (
-            F.one_hot(label, num_classes=metadata.num_classes).numpy().astype(np.int32)
-        )
+        image = image.to(torch.float32)
+        label = F.one_hot(label, num_classes=metadata.num_classes).to(torch.int32)
         return ImageClassificationBatch(image=image, label=label)
 
     return create_dataset(
