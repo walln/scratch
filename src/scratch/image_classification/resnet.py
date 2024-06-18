@@ -5,7 +5,8 @@ from typing import Literal
 
 from flax import nnx
 from scratch.datasets.image_classification_dataset import (
-    mnist_dataset,
+    patch_datasets_warning,
+    tiny_imagenet_dataset,
 )
 from scratch.image_classification.trainer import (
     ImageClassificationParallelTrainer,
@@ -17,15 +18,23 @@ from scratch.utils.logging import console
 class ResNetConfig:
     """Configuration for a ResNet model."""
 
-    def __init__(self, num_classes, depths, bottleneck=False):
+    def __init__(
+        self,
+        num_classes: int,
+        input_channels: int,
+        depths: list[int],
+        bottleneck=False,
+    ):
         """Initializes the ResNet configuration.
 
         Args:
             num_classes: Number of output classes
+            input_channels: Number of input channels
             depths: List of depths for each stage
             bottleneck: Whether to use bottleneck blocks
         """
         self.num_classes = num_classes
+        self.input_channels = input_channels
         self.depths = depths  # List of depths for each stage
         self.bottleneck = bottleneck  # Whether to use bottleneck blocks
 
@@ -36,12 +45,14 @@ class ResNetConfig:
             "resnet18", "resnet34", "resnet50", "resnet101", "resnet152"
         ],
         num_classes: int,
+        input_channels: int = 3,
     ):
         """Creates a ResNetConfig from a preset.
 
         Args:
             preset_name: Name of the preset (e.g., 'resnet18')
             num_classes: Number of output classes
+            input_channels: Number of input channels
 
         Returns:
             A ResNetConfig instance with the preset configuration
@@ -56,7 +67,7 @@ class ResNetConfig:
         if preset_name not in PRESETS:
             raise ValueError(f"Unknown preset name: {preset_name}")
         config = PRESETS[preset_name]
-        return cls(num_classes=num_classes, **config)
+        return cls(num_classes=num_classes, input_channels=input_channels, **config)
 
 
 class ResNetBlock(nnx.Module):
@@ -176,7 +187,12 @@ class ResNet(nnx.Module):
         """
         self.config = config
         self.conv1 = nnx.Conv(
-            1, 64, kernel_size=(7, 7), strides=(2, 2), padding="same", rngs=rngs
+            self.config.input_channels,
+            64,
+            kernel_size=(7, 7),
+            strides=(2, 2),
+            padding="same",
+            rngs=rngs,
         )
         self.max_pool = partial(
             nnx.max_pool, window_shape=(3, 3), strides=(2, 2), padding="same"
@@ -255,11 +271,11 @@ class ResNet(nnx.Module):
 
 
 if __name__ == "__main__":
+    patch_datasets_warning()
     console.log("Loading dataset")
     batch_size = 32
-    dataset = mnist_dataset(
+    dataset = tiny_imagenet_dataset(
         batch_size=batch_size,
-        shuffle=True,
     )
 
     console.log(f"Dataset metadata: {dataset.metadata}")
@@ -272,7 +288,7 @@ if __name__ == "__main__":
     model = ResNet(model_config, rngs=nnx.Rngs(0))
 
     trainer_config = ImageClassificationParallelTrainerConfig(
-        batch_size=batch_size, learning_rate=0.1, epochs=50
+        batch_size=batch_size, learning_rate=0.01, epochs=3
     )
     trainer = ImageClassificationParallelTrainer(model, trainer_config)
     trainer.train_and_evaluate(dataset.train, dataset.test)
