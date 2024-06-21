@@ -1,10 +1,14 @@
 """Test the tiny_imagenet dataset."""
 
-from scratch.datasets.image_classification_dataset import tiny_imagenet_dataset
+from scratch.datasets.image_classification_dataset import (
+    patch_datasets_warning,
+    tiny_imagenet_dataset,
+)
 
 
 def test_loading():
     """Test that the tiny_imagenet dataset can be loaded."""
+    patch_datasets_warning()  # This is a workaround for a bug in the datasets library
     batch_size = 4
     dataset = tiny_imagenet_dataset(batch_size=batch_size)
 
