@@ -19,6 +19,9 @@ class CNNConfig:
     """Configuration for the CNN model."""
 
     num_classes: int = 10
+    """Number of classes in the dataset."""
+    input_shape: tuple[int, int, int] = (28, 28, 1)
+    """Number of input channels."""
 
 
 class CNN(nnx.Module):
@@ -31,7 +34,7 @@ class CNN(nnx.Module):
             config: Configuration for the model
             rngs: Random number generators
         """
-        self.conv1 = nnx.Conv(1, 32, kernel_size=(3, 3), rngs=rngs)
+        self.conv1 = nnx.Conv(config.input_shape[-1], 32, kernel_size=(3, 3), rngs=rngs)
         self.conv2 = nnx.Conv(32, 64, kernel_size=(3, 3), rngs=rngs)
         self.avg_pool = partial(nnx.avg_pool, window_shape=(2, 2), strides=(2, 2))
         self.linear1 = nnx.Linear(3136, 256, rngs=rngs)
@@ -78,7 +81,9 @@ if __name__ == "__main__":
     assert dataset.test is not None, "Test dataset is None"
 
     console.log("Configuring model")
-    model_config = CNNConfig(num_classes=dataset.metadata.num_classes)
+    model_config = CNNConfig(
+        num_classes=dataset.metadata.num_classes, input_shape=(28, 28, 1)
+    )
     model = CNN(model_config, rngs=nnx.Rngs(0))
 
     trainer_config = ImageClassificationParallelTrainerConfig(batch_size=batch_size)

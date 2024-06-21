@@ -69,7 +69,7 @@ class ImageClassificationParallelTrainerConfig:
     """The console to use for logging."""
     checkpoint_path: str = "checkpoints/nnx-cnn/mnist"
     """The path to save the checkpoints."""
-    save_checkpoint: bool = True
+    save_checkpoint: bool = False
     """Whether to save checkpoints."""
     resume_checkpoint: bool = False
     """Whether to resume training from a checkpoint."""
