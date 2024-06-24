@@ -86,6 +86,8 @@ if __name__ == "__main__":
     )
     model = CNN(model_config, rngs=nnx.Rngs(0))
 
-    trainer_config = ImageClassificationParallelTrainerConfig(batch_size=batch_size)
+    trainer_config = ImageClassificationParallelTrainerConfig(
+        batch_size=batch_size, epochs=1
+    )
     trainer = ImageClassificationParallelTrainer(model, trainer_config)
     trainer.train_and_evaluate(dataset.train, dataset.test)
