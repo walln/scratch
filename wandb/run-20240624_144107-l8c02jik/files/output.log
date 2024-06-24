@@ -1,0 +1,21 @@
+[14:41:08] Running on gpu backend                                                                                                           ]8;id=655784;file:///home/walln/dev/projects/scratch/src/scratch/utils/logging.py\logging.py]8;;\:]8;id=357441;file:///home/walln/dev/projects/scratch/src/scratch/utils/logging.py#121\121]8;;\
+           Using [1m1[22m devices                                                                                                                  ]8;id=162439;file:///home/walln/dev/projects/scratch/src/scratch/utils/logging.py\logging.py]8;;\:]8;id=133404;file:///home/walln/dev/projects/scratch/src/scratch/utils/logging.py#121\121]8;;\
+           Beginning training and evaluation                                                                                                ]8;id=790282;file:///home/walln/dev/projects/scratch/src/scratch/utils/logging.py\logging.py]8;;\:]8;id=795155;file:///home/walln/dev/projects/scratch/src/scratch/utils/logging.py#121\121]8;;\
+[92m─────────────────────────────────────────────────────────────────────── [39mEpoch [1m1[22m/[1m1[92m[22m ────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+[14:41:31] train_accuracy: [1m0.9674666523933411[22m                                                                                               ]8;id=248466;file:///home/walln/dev/projects/scratch/src/scratch/utils/logging.py\logging.py]8;;\:]8;id=924099;file:///home/walln/dev/projects/scratch/src/scratch/utils/logging.py#121\121]8;;\
+           train_loss: [1m0.10573571920394897[22m                                                                                                  ]8;id=224425;file:///home/walln/dev/projects/scratch/src/scratch/utils/logging.py\logging.py]8;;\:]8;id=143173;file:///home/walln/dev/projects/scratch/src/scratch/utils/logging.py#121\121]8;;\
+  Training   [38m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[39m [35m100%[39m [36m0:00:00[39m [32m60032/60032[39m [33m0:00:22
+
+           train_time: [1m26.[22m89s                                                                                                               ]8;id=518507;file:///home/walln/dev/projects/scratch/src/scratch/utils/logging.py\logging.py]8;;\:]8;id=302569;file:///home/walln/dev/projects/scratch/src/scratch/utils/logging.py#121\121]8;;\
+           eval_time: [1m3.[22m90s                                                                                                                 ]8;id=639796;file:///home/walln/dev/projects/scratch/src/scratch/utils/logging.py\logging.py]8;;\:]8;id=635854;file:///home/walln/dev/projects/scratch/src/scratch/utils/logging.py#121\121]8;;\
+           total_time: [1m30.[22m79s                                                                                                               ]8;id=263963;file:///home/walln/dev/projects/scratch/src/scratch/utils/logging.py\logging.py]8;;\:]8;id=395378;file:///home/walln/dev/projects/scratch/src/scratch/utils/logging.py#121\121]8;;\

@@ -89,5 +89,13 @@ if __name__ == "__main__":
     trainer_config = ImageClassificationParallelTrainerConfig(
         batch_size=batch_size, epochs=1
     )
-    trainer = ImageClassificationParallelTrainer(model, trainer_config)
+
+    # To enable WANDB logging, uncomment the following lines
+    # logger = WeightsAndBiasesLogger(
+    #     "walln_scratch_cnn_mnist", model_config, trainer_config
+    # )
+    # And comment out the following line
+    logger = None
+
+    trainer = ImageClassificationParallelTrainer(model, trainer_config, logger=logger)
     trainer.train_and_evaluate(dataset.train, dataset.test)
