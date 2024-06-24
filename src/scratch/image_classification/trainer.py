@@ -111,6 +111,7 @@ class ImageClassificationParallelTrainer(SupervisedTrainer[M]):
                     train_step(self.model, self.train_state, inputs, targets)
                     self.progress.update(task, advance=self.trainer_config.batch_size)
                     self.global_step += self.trainer_config.batch_size
+                    self.log_metrics("train", log_to_console=False, reset_metrics=False)
 
             self.log_metrics("train")
 

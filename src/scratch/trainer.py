@@ -13,7 +13,12 @@ from jax.sharding import Mesh
 from rich.console import Console
 from rich.progress import Progress
 
-from scratch.utils.logging import console, get_progress_widgets
+from scratch.utils.logging import (
+    BaseLogger,
+    console,
+    get_progress_widgets,
+    no_op_logger,
+)
 from scratch.utils.timer import capture_time
 
 M = TypeVar("M", bound=nnx.Module)
@@ -71,12 +76,18 @@ class BaseTrainerConfig:
 class BaseTrainer(Generic[M], ABC):
     """Abstract trainer class for training models."""
 
-    def __init__(self, model: M, trainer_config: BaseTrainerConfig):
+    def __init__(
+        self,
+        model: M,
+        trainer_config: BaseTrainerConfig,
+        logger: BaseLogger | None = None,
+    ):
         """Initializes a trainer for a specific objective.
 
         Args:
             model: The model to train
             trainer_config: The configuration for the trainer
+            logger: The logger to use
         """
         self.model = model
         self.trainer_config = trainer_config
@@ -85,6 +96,7 @@ class BaseTrainer(Generic[M], ABC):
         self.train_state = self._create_train_state()
         self.mesh = Mesh(jax.devices(), ("device",))
         self.global_step = 0
+        self.logger = logger if logger else no_op_logger
 
         self.progress = Progress(
             *get_progress_widgets(), console=self.console, transient=True
@@ -104,24 +116,38 @@ class BaseTrainer(Generic[M], ABC):
         """Evaluate the model on the test set."""
         pass
 
-    def log_metrics(self, step_type: Literal["train", "eval"]):
+    def log_metrics(
+        self,
+        step_type: Literal["train", "eval"],
+        log_to_console=True,
+        reset_metrics=True,
+    ):
         """Logs the metrics from the training state and resets them.
 
         Also returns a dict of the computed metrics.
 
         Args:
             step_type: The type of step
+            log_to_console: Whether to log to the console
+            reset_metrics: Whether to reset the metrics
         """
-        for (
-            metric,
-            value,
-        ) in self.train_state.compute_metrics().items():
-            if step_type == "eval" and metric == "loss":
-                continue
+        reported_metrics = {
+            f"{step_type}_{metric}": value
+            for metric, value in self.train_state.compute_metrics().items()
+            if not (step_type == "eval" and metric == "loss")
+        }
 
-            self.console.log(f"{step_type}_{metric}: {value}")
+        self.logger.log_metrics(reported_metrics, self.global_step)
+
+        if log_to_console:
+            for metric in reported_metrics:
+                self.logger.log(f"{metric}: {reported_metrics[metric]}")
+
         computed_metrics = self.train_state.compute_metrics()
-        self.train_state.reset_metrics()
+
+        if reset_metrics:
+            self.train_state.reset_metrics()
+
         return computed_metrics
 
     @property
@@ -144,7 +170,7 @@ class BaseTrainer(Generic[M], ABC):
             step: The current step
             metrics: The metrics to save
         """
-        self.console.log(f"Saving checkpoint at step {step}")
+        self.logger.log(f"Saving checkpoint at step {step}")
         state = nnx.state(self.model)
         opt_state = self.train_state.opt_state
         self.checkpoint_manager.save(
@@ -177,7 +203,7 @@ class BaseTrainer(Generic[M], ABC):
         self.train_state.opt_state = opt_state
         self.global_step = step
 
-        console.log(f"Loaded checkpoint at step {step}")
+        self.logger.log(f"Loaded checkpoint at step {step}")
 
 
 @dataclass
@@ -210,17 +236,17 @@ class SupervisedTrainer(BaseTrainer[M], ABC):
             train_loader: The training data loader
             test_loader: The test data loader
         """
-        self.console.log(f"Running on {jax.default_backend()} backend")
-        self.console.log(f"Using {jax.device_count()} devices")
-        self.console.log("Beginning training and evaluation")
+        self.logger.log(f"Running on {jax.default_backend()} backend")
+        self.logger.log(f"Using {jax.device_count()} devices")
+        self.logger.log("Beginning training and evaluation")
 
         for epoch in range(self.trainer_config.epochs):
-            console.rule(f"Epoch {epoch + 1}/{self.trainer_config.epochs}")
+            self.logger.console.rule(f"Epoch {epoch + 1}/{self.trainer_config.epochs}")
             with self.progress:
                 with capture_time() as train_time:
                     self.train(train_loader)
                 with capture_time() as eval_time:
                     self.eval(test_loader)
-            console.log(f"train_time: {train_time():.2f}s")
-            console.log(f"eval_time: {eval_time():.2f}s")
-            console.log(f"total_time: {train_time() + eval_time():.2f}s")
+            self.logger.log(f"train_time: {train_time():.2f}s")
+            self.logger.log(f"eval_time: {eval_time():.2f}s")
+            self.logger.log(f"total_time: {train_time() + eval_time():.2f}s")
