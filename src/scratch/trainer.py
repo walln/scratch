@@ -229,6 +229,7 @@ class SupervisedTrainer(BaseTrainer[M], ABC):
         """Evaluate the model on the test set."""
         pass
 
+    # TODO: resume from checkpoint epoch
     def train_and_evaluate(self, train_loader, test_loader):
         """Trains and evaluates the model for the specified number of epochs.
 
@@ -242,6 +243,8 @@ class SupervisedTrainer(BaseTrainer[M], ABC):
 
         for epoch in range(self.trainer_config.epochs):
             self.logger.console.rule(f"Epoch {epoch + 1}/{self.trainer_config.epochs}")
+            train_loader.set_epoch(epoch)
+            test_loader.set_epoch(epoch)
             with self.progress:
                 with capture_time() as train_time:
                     self.train(train_loader)

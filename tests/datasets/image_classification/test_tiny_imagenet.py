@@ -22,5 +22,5 @@ def test_loading():
         64,
         64,
         3,
-    )
+    ), f"Shape: {first['image'].numpy().shape}"
     assert first["label"].numpy().shape == (batch_size, dataset.metadata.num_classes)

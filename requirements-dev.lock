@@ -13,7 +13,7 @@ absl-py==2.1.0
     # via chex
     # via optax
     # via orbax-checkpoint
-aiohttp==3.9.3
+aiohttp==3.9.5
     # via datasets
     # via fsspec
 aiosignal==1.3.1
@@ -66,7 +66,7 @@ contourpy==1.2.1
     # via matplotlib
 cycler==0.12.1
     # via matplotlib
-datasets==2.18.0
+datasets==2.20.0
     # via scratch
 debugpy==1.8.1
     # via ipykernel
@@ -120,7 +120,7 @@ httpcore==1.0.5
     # via httpx
 httpx==0.27.0
     # via jupyterlab
-huggingface-hub==0.22.2
+huggingface-hub==0.23.4
     # via datasets
 identify==2.5.35
     # via pre-commit
@@ -370,7 +370,7 @@ packaging==24.0
     # via pytest
     # via qtconsole
     # via qtpy
-pandas==2.2.1
+pandas==2.2.2
     # via datasets
 pandocfilters==1.5.1
     # via nbconvert
@@ -404,7 +404,7 @@ ptyprocess==0.7.0
     # via terminado
 pure-eval==0.2.2
     # via stack-data
-pyarrow==15.0.2
+pyarrow==16.1.0
     # via datasets
 pyarrow-hotfix==0.6
     # via datasets
@@ -450,7 +450,7 @@ referencing==0.35.1
     # via jsonschema
     # via jsonschema-specifications
     # via jupyter-events
-requests==2.31.0
+requests==2.32.3
     # via datasets
     # via huggingface-hub
     # via jupyterlab-server
@@ -527,7 +527,7 @@ tornado==6.4
     # via jupyterlab
     # via notebook
     # via terminado
-tqdm==4.66.2
+tqdm==4.66.4
     # via datasets
     # via huggingface-hub
     # via scratch

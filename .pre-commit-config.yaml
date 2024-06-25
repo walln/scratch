@@ -13,12 +13,6 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
-      - id: test
-        name: test
-        entry: rye run pytest
-        language: system
-        types: [python]
-        pass_filenames: false
       - id: commit-msg
         name: conventional-commit-messages
         language: pygrep

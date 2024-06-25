@@ -6,7 +6,8 @@ import jax
 import jax.numpy as jnp
 from flax import nnx
 from scratch.datasets.image_classification_dataset import (
-    dummy_image_classification_dataset,
+    patch_datasets_warning,
+    tiny_imagenet_dataset,
 )
 from scratch.image_classification.trainer import (
     ImageClassificationParallelTrainer,
@@ -144,8 +145,7 @@ class VisionTransformer(nnx.Module):
         """
 
         def img_to_patch(x: jnp.ndarray, patch_size: int):
-            # assuming x is of shape ( H, W, C)
-            print(f"In img_to_patch: {x.shape}")
+            # assuming x is of shape (B, H, W, C)
             B, H, W, C = x.shape
             x = x.reshape(
                 B, H // patch_size, patch_size, W // patch_size, patch_size, C
@@ -155,7 +155,6 @@ class VisionTransformer(nnx.Module):
             return x
 
         x = img_to_patch(x, self.config.patch_size)
-        print(f"X shape: {x.shape}")
         B, T, _ = x.shape
         x = self.patch_embedding(x)
 
@@ -178,12 +177,11 @@ class VisionTransformer(nnx.Module):
 
 
 if __name__ == "__main__":
+    patch_datasets_warning()
     console.log("Loading dataset")
     batch_size = 16
-    input_shape = (224, 224, 3)
-    dataset = dummy_image_classification_dataset(
-        batch_size=batch_size, shuffle=True, shape=input_shape, num_samples=128
-    )
+    dataset = tiny_imagenet_dataset(batch_size=batch_size, shuffle=False)
+    input_shape = dataset.metadata.input_shape
 
     console.log(f"Dataset metadata: {dataset.metadata}")
     assert dataset.test is not None, "Test dataset is None"
@@ -195,7 +193,7 @@ if __name__ == "__main__":
     model = VisionTransformer(model_config, rngs=nnx.Rngs(0))
 
     trainer_config = ImageClassificationParallelTrainerConfig(
-        batch_size=batch_size, epochs=1
+        batch_size=batch_size, epochs=5
     )
     trainer = ImageClassificationParallelTrainer(model, trainer_config)
     trainer.train_and_evaluate(dataset.train, dataset.test)

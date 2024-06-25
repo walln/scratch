@@ -13,7 +13,6 @@ dependencies = [
     "matplotlib>=3.8.4",
     "scikit-learn>=1.4.1.post1",
     "numpy>=1.26.4",
-    "datasets>=2.18.0",
     "optax>=0.2.2",
     "tqdm>=4.66.2",
     "equinox>=0.11.3",
@@ -24,6 +23,7 @@ dependencies = [
     "jaxlib @ https://storage.googleapis.com/jax-releases/cuda12/jaxlib-0.4.26+cuda12.cudnn89-cp312-cp312-manylinux2014_x86_64.whl",
     "jax[cuda12_pip]>=0.4.26",
     "jmp>=0.0.4",
+    "datasets>=2.20.0",
 ]
 license = "MIT"
 readme = "README.md"
