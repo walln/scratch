@@ -21,7 +21,7 @@ jobs:
               run: rye sync
 
             - name: Lint
-              run: rye run ruff check
+              run: rye run ruff check --verbose
 
             - name: Format
               run: rye format -- --check
