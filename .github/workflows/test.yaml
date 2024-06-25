@@ -14,6 +14,7 @@ jobs:
             - name: Install a specific version
               uses: eifinger/setup-rye@v3
               with:
+                enable-cache: true
                 version: 'latest'
 
             - name: Install dependencies
