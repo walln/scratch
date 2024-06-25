@@ -2,7 +2,6 @@
 
 from typing import Any, Generic, TypeVar
 
-import wandb
 from scratch.utils.logging.base import BaseLogger
 
 ModelConfig = TypeVar("ModelConfig")
@@ -18,14 +17,15 @@ class WeightsAndBiasesLogger(BaseLogger, Generic[ModelConfig, TrainerConfig]):
         """Initializes the logger."""
         super().__init__()
         self.project = project
-        self.wandb = wandb
         self.model_config = model_config
         self.trainer_config = trainer_config
         self.run = self._init_run()
 
     def _init_run(self):
         """Initializes a new run."""
-        return self.wandb.init(
+        import wandb
+
+        return wandb.init(
             project=self.project,
             config={
                 "model": self._dataclass_to_dict(self.model_config),
