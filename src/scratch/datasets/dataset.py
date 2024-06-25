@@ -42,6 +42,11 @@ is not contiguous in memory so it can be slower for the arrow tables to read. So
 a good idea to keep the data in the NCHW format in the arrow tables and then transform
 it to NHWC when loading it into the model. This is because the NHWC format is faster for
 the model to read and the NCHW format is faster for the arrow tables to read.
+
+This is even more interesting considering when upgrading datasets to 2.19.0 the
+torch_formatter changed to default to NCHW which is good but was not the default
+before and was completely undocumented... required reviewing the changes in
+releases since 2.18.0.
 """
 
 import dataclasses
@@ -72,18 +77,30 @@ class DataLoader(Generic[B]):
         self.transform = transform
 
     def __iter__(self) -> Iterator[B]:
-        """Iterate over the DataLoader."""
-        for batch in self.loader:
-            # Apply the transformation and yield a BatchData instance
-            transformed_batch = self.transform(batch) if self.transform else batch
-            yield transformed_batch
+        """Iterate over the batches."""
+        self.iterator = iter(self.loader)
+        return self
 
-    def __len__(self):
-        """Return the number of batches."""
+    def __next__(self) -> B:
+        """Get the next batch."""
+        batch = next(self.iterator)
+        return self.transform(batch) if self.transform else batch
+
+    def __len__(self) -> int:
+        """Get the length of the loader."""
         try:
             return len(self.loader)
         except Exception:
             return 0
+
+    def set_epoch(self, epoch: int):
+        """Set the epoch of the loader."""
+        if hasattr(self.loader.dataset, "set_epoch"):
+            self.loader.dataset.set_epoch(epoch)  # type: ignore
+        else:
+            raise ValueError(
+                f"Cannot set epoch on dataset type {type(self.loader.dataset)}"
+            )
 
 
 @dataclasses.dataclass

@@ -9,7 +9,7 @@ from typing import TypedDict
 import numpy as np
 import torch
 import torch.nn.functional as F
-from datasets import load_dataset
+from datasets import IterableDataset, load_dataset
 from torch import Tensor
 from torch.utils.data import DataLoader as TorchDataLoader
 
@@ -17,6 +17,11 @@ from scratch.datasets.dataset import (
     DataLoader,
     Dataset,
 )
+
+
+def nchw_to_nhwc(image: Tensor) -> Tensor:
+    """Convert a batch of images from NCHW to NHWC format."""
+    return image.permute(0, 2, 3, 1)
 
 
 def patch_datasets_warning():
@@ -82,8 +87,6 @@ def create_dataset(
     batch_size: int,
     transform: Callable[[ImageClassificationBatch], ImageClassificationBatch] | None,
     collate_fn: Callable | None = None,
-    *,
-    shuffle: bool,
 ):
     """Create a Dataset object for image classification.
 
@@ -94,7 +97,6 @@ def create_dataset(
         transform: the transformation function to apply to the data
         batch_size: the batch size
         collate_fn: the collate function for the data loader
-        shuffle: whether to shuffle the data
 
     Returns:
         The dataset
@@ -102,13 +104,11 @@ def create_dataset(
     train_loader = TorchDataLoader(
         train_data,  # type: ignore - PyTorch types are incompatible
         batch_size=batch_size,
-        shuffle=shuffle,
         collate_fn=collate_fn,
     )
     test_loader = TorchDataLoader(
         test_data,  # type: ignore - PyTorch types are incompatible
         batch_size=batch_size,
-        shuffle=shuffle,
         collate_fn=collate_fn,
     )
 
@@ -128,8 +128,55 @@ def create_dataset(
     )
 
 
+def load_hf_dataset(
+    dataset_name: str,
+    dataset_split: str,
+    *,
+    prepare: Callable | None = None,
+    validate: Callable | None = None,
+    shuffle=True,
+):
+    """Load a dataset from the Hugging Face datasets library.
+
+    Creates an IterableDataset object from the Hugging Face datasets library by
+    streaming the data on the fly. New elements are fetched from the remote server
+    as needed. Elements will go through the order of:
+    - Loading the dataset
+    - Shuffling the dataset
+    - Validating the dataset
+    - Preparing the dataset
+
+    Args:
+        dataset_name: the name of the dataset
+        dataset_split: the split of the dataset
+        prepare: the prepare function to apply to the dataset
+        validate: the validate function to apply to the dataset
+        shuffle: whether to shuffle the dataset
+
+    Returns:
+        The IterableDataset object
+    """
+    data = load_dataset(
+        dataset_name, split=dataset_split, trust_remote_code=True
+    ).with_format("torch")
+
+    if shuffle:
+        data = data.shuffle().with_format("torch")
+
+    if validate:
+        data = data.filter(validate)
+
+    if prepare:
+        data = data.map(prepare)
+
+    if shuffle:
+        data = data.shuffle().with_format("torch")
+
+    return data
+
+
 def dummy_image_classification_dataset(
-    batch_size=32, shuffle=True, num_samples=100, num_classes=10, shape=(28, 28, 1)
+    batch_size=32, shuffle=True, num_samples=128, num_classes=10, shape=(28, 28, 1)
 ):
     """Create a dummy image classification dataset.
 
@@ -145,15 +192,16 @@ def dummy_image_classification_dataset(
         num_classes=10, input_shape=(28, 28, 1), name="dummy"
     )
 
-    # Just create an array of random numbers as the dummy dataset
-    data = np.random.rand(num_samples, *shape)
-    labels = np.random.randint(0, num_classes, num_samples)
+    def gen():
+        for _ in range(num_samples):
+            image = np.random.rand(*shape)
+            label = np.random.randint(0, num_classes)
+            yield {"image": image, "label": label}
 
-    # Now turn into a list of dicts with each dict being one sample and label
-    data = [
-        {"image": image, "label": label}
-        for image, label in zip(data, labels, strict=False)
-    ]
+    data = IterableDataset.from_generator(gen)
+
+    if shuffle:
+        data = data.shuffle(buffer_size=num_samples)
 
     def transform(batch: ImageClassificationBatch):
         """A image classification batch transformation function.
@@ -176,7 +224,6 @@ def dummy_image_classification_dataset(
         test_data=data,
         transform=transform,
         batch_size=batch_size,
-        shuffle=shuffle,
     )
 
 
@@ -202,15 +249,9 @@ def mnist_dataset(batch_size=32, shuffle=True):
         sample["image"], sample["label"] = images, labels
         return sample
 
-    train_data = (
-        load_dataset("mnist", split="train", trust_remote_code=True)
-        .with_format("torch")
-        .map(prepare)
-    )
-    test_data = (
-        load_dataset("mnist", split="test", trust_remote_code=True)
-        .with_format("torch")
-        .map(prepare)
+    train_data, test_data = (
+        load_hf_dataset("mnist", "train", prepare=prepare, shuffle=shuffle),
+        load_hf_dataset("mnist", "test", prepare=prepare, shuffle=shuffle),
     )
 
     metadata = ImageClassificationDatasetMetadata(
@@ -220,7 +261,7 @@ def mnist_dataset(batch_size=32, shuffle=True):
     def transform(batch: ImageClassificationBatch):
         """MNIST is greyscale so we need to add a channel dimension."""
         image, label = batch["image"], batch["label"]
-        image = image.unsqueeze(-1)
+        image = nchw_to_nhwc(image)
         return ImageClassificationBatch(image=image, label=label)
 
     return create_dataset(
@@ -229,7 +270,6 @@ def mnist_dataset(batch_size=32, shuffle=True):
         test_data=test_data,
         transform=transform,
         batch_size=batch_size,
-        shuffle=shuffle,
     )
 
 
@@ -258,43 +298,41 @@ def tiny_imagenet_dataset(batch_size=32, shuffle=True):
 
     def validate(sample):
         return (
-            sample["image"].shape == (64, 64, 3)
+            sample["image"].shape == (3, 64, 64)
             and torch.isnan(sample["image"]).sum() == 0
             and torch.isinf(sample["image"]).sum() == 0
         )
 
-    train_data = (
-        load_dataset(
+    train_data, test_data = (
+        load_hf_dataset(
             "zh-plus/tiny-imagenet",
-            split="train",
-            trust_remote_code=True,
-            streaming=True,
-        )
-        .with_format("torch")
-        .filter(validate)
-        .map(prepare)
-    )
-    test_data = (
-        load_dataset(
+            "train",
+            prepare=prepare,
+            validate=validate,
+            shuffle=shuffle,
+        ),
+        load_hf_dataset(
             "zh-plus/tiny-imagenet",
-            split="valid",
-            trust_remote_code=True,
-            streaming=True,
-        )
-        .with_format("torch")
-        .filter(validate)
-        .map(prepare)
+            "valid",
+            prepare=prepare,
+            validate=validate,
+            shuffle=shuffle,
+        ),
     )
 
     metadata = ImageClassificationDatasetMetadata(
         num_classes=200, input_shape=(64, 64, 3), name="tiny_imagenet"
     )
 
+    def transform(batch: ImageClassificationBatch):
+        image, label = batch["image"], batch["label"]
+        image = nchw_to_nhwc(image)
+        return ImageClassificationBatch(image=image, label=label)
+
     return create_dataset(
         metadata=metadata,
         train_data=train_data,
         test_data=test_data,
         batch_size=batch_size,
-        shuffle=False,
-        transform=None,
+        transform=transform,
     )

@@ -13,7 +13,7 @@ absl-py==2.1.0
     # via chex
     # via optax
     # via orbax-checkpoint
-aiohttp==3.9.3
+aiohttp==3.9.5
     # via datasets
     # via fsspec
 aiosignal==1.3.1
@@ -34,7 +34,7 @@ contourpy==1.2.1
     # via matplotlib
 cycler==0.12.1
     # via matplotlib
-datasets==2.18.0
+datasets==2.20.0
     # via scratch
 dill==0.3.8
     # via datasets
@@ -67,7 +67,7 @@ gitdb==4.0.11
     # via gitpython
 gitpython==3.1.43
     # via wandb
-huggingface-hub==0.22.2
+huggingface-hub==0.23.4
     # via datasets
 idna==3.6
     # via requests
@@ -205,7 +205,7 @@ packaging==24.0
     # via datasets
     # via huggingface-hub
     # via matplotlib
-pandas==2.2.1
+pandas==2.2.2
     # via datasets
 pillow==10.3.0
     # via matplotlib
@@ -216,7 +216,7 @@ protobuf==4.25.3
     # via wandb
 psutil==5.9.8
     # via wandb
-pyarrow==15.0.2
+pyarrow==16.1.0
     # via datasets
 pyarrow-hotfix==0.6
     # via datasets
@@ -235,7 +235,7 @@ pyyaml==6.0.1
     # via huggingface-hub
     # via orbax-checkpoint
     # via wandb
-requests==2.31.0
+requests==2.32.3
     # via datasets
     # via huggingface-hub
     # via wandb
@@ -275,7 +275,7 @@ toolz==0.12.1
     # via chex
 torch==2.2.2
     # via scratch
-tqdm==4.66.2
+tqdm==4.66.4
     # via datasets
     # via huggingface-hub
     # via scratch
