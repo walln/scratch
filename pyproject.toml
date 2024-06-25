@@ -74,6 +74,9 @@ select = [
 
 ignore = ["F722"]
 
+[tool.tuff.lint.isort]
+known-first-party = ["src"]
+
 [[tool.rye.sources]]
 name = "jaxlib-gpu"
 url = "https://storage.googleapis.com/jax-releases/jax_cuda_releases.html"
