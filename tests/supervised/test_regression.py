@@ -7,13 +7,10 @@ from scratch.supervised.regression import (
     LogisticRegression,
     RidgeRegression,
 )
-from scratch.utils.logging import setup_logger
 from sklearn.datasets import make_classification, make_regression
 from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
-
-logger = setup_logger()
 
 
 def regression_dataset():
@@ -45,12 +42,10 @@ def test_linear_regression():
     predictions = model.predict(X_test)
 
     mse = mean_squared_error(y_test, predictions)
-    logger.info(f"MSE: {mse}")
     assert mse > 0.00001
     assert mse < 0.01
 
     r2 = r2_score(y_test, predictions)
-    logger.info(f"R2 Score: {r2}")
     assert r2 >= 0.9
     assert r2 < 1.0
 
@@ -65,12 +60,10 @@ def test_lasso_regression():
     predictions = model.predict(X_test)
 
     mse = mean_squared_error(y_test, predictions)
-    logger.info(f"MSE: {mse}")
     assert mse > 0.00001
     assert mse < 0.01
 
     r2 = r2_score(y_test, predictions)
-    logger.info(f"R2 Score: {r2}")
     assert r2 >= 0.9
     assert r2 < 1.0
 
@@ -85,12 +78,10 @@ def test_ridge_regression():
     predictions = model.predict(X_test)
 
     mse = mean_squared_error(y_test, predictions)
-    logger.info(f"MSE: {mse}")
     assert mse > 0.00001
     assert mse < 0.01
 
     r2 = r2_score(y_test, predictions)
-    logger.info(f"R2 Score: {r2}")
     assert r2 >= 0.9
     assert r2 < 1.0
 
@@ -105,12 +96,10 @@ def test_elastic_net():
     predictions = model.predict(X_test)
 
     mse = mean_squared_error(y_test, predictions)
-    logger.info(f"MSE: {mse}")
     assert mse > 0.00001
     assert mse < 0.01
 
     r2 = r2_score(y_test, predictions)
-    logger.info(f"R2 Score: {r2}")
     assert r2 >= 0.9
     assert r2 < 1.0
 
@@ -128,11 +117,9 @@ def test_logistic_regression():
     predictions = model.predict(X_test)
     acc = accuracy_score(y_test, predictions)
 
-    logger.info(f"Accuracy score: {acc}")
     assert acc >= 0.9
     assert acc < 1.0
 
     f1 = f1_score(y_test, predictions)
-    logger.info(f"F1 Score: {f1}")
     assert f1 >= 0.9
     assert f1 < 1.0

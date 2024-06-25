@@ -7,9 +7,6 @@ from typing import Literal
 import numpy as np
 from scratch.activation_functions.sigmoid import Sigmoid
 from scratch.utils.data import diagonalize
-from scratch.utils.logging import setup_logger
-
-logger = setup_logger()
 
 
 class L1_Regularization:
