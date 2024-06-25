@@ -9,6 +9,8 @@ from rich.progress import MofNCompleteColumn, Progress, SpinnerColumn, TimeElaps
 
 import wandb
 
+console = Console()
+
 
 def setup_logger():
     """Return a logger."""
@@ -25,9 +27,6 @@ def get_progress_widgets():
         MofNCompleteColumn(),
         TimeElapsedColumn(),
     ]
-
-
-console = Console()
 
 
 class BaseLogger(ABC):
