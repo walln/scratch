@@ -1,9 +1,9 @@
 """Test the tiny_imagenet dataset."""
 
 from scratch.datasets.image_classification_dataset import (
-    patch_datasets_warning,
     tiny_imagenet_dataset,
 )
+from scratch.datasets.utils import patch_datasets_warning
 
 
 def test_loading():

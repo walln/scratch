@@ -21,8 +21,8 @@ import jax.numpy as jnp
 from flax import nnx
 from scratch.datasets.image_classification_dataset import (
     dummy_image_classification_dataset,
-    patch_datasets_warning,
 )
+from scratch.datasets.utils import patch_datasets_warning
 from scratch.image_classification.trainer import (
     ImageClassificationParallelTrainer,
     ImageClassificationParallelTrainerConfig,

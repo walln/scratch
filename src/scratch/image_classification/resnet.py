@@ -15,9 +15,9 @@ from typing import Literal
 
 from flax import nnx
 from scratch.datasets.image_classification_dataset import (
-    patch_datasets_warning,
     tiny_imagenet_dataset,
 )
+from scratch.datasets.utils import patch_datasets_warning
 from scratch.image_classification.trainer import (
     ImageClassificationParallelTrainer,
     ImageClassificationParallelTrainerConfig,
