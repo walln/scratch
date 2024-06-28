@@ -40,6 +40,7 @@ import torch.nn.functional as F
 from datasets import IterableDataset, load_dataset
 from torch import Tensor
 from torch.utils.data import DataLoader as TorchDataLoader
+from torchvision import transforms
 
 from scratch.datasets.dataset import (
     DataLoader,
@@ -322,10 +323,12 @@ def tiny_imagenet_dataset(batch_size=32, shuffle=True):
         return sample
 
     def validate(sample):
+        transform = transforms.ToTensor()
+        img = transform(sample["image"])
         return (
-            sample["image"].shape == (3, 64, 64)
-            and torch.isnan(sample["image"]).sum() == 0
-            and torch.isinf(sample["image"]).sum() == 0
+            img.shape == (3, 64, 64)
+            and torch.isnan(img).sum() == 0
+            and torch.isinf(img).sum() == 0
         )
 
     train_data, test_data = (

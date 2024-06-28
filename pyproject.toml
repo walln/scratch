@@ -24,6 +24,7 @@ dependencies = [
     "jax[cuda12_pip]>=0.4.26",
     "jmp>=0.0.4",
     "datasets>=2.20.0",
+    "torchvision>=0.18.1",
 ]
 license = "MIT"
 readme = "README.md"
