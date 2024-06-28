@@ -29,7 +29,7 @@ M = TypeVar("M", bound=nnx.Module)
 
 
 class TrainState(Generic[M], nnx.Optimizer):
-    """Train state for the CNN model.
+    """Train state for training models.
 
     This class manages the training state, including the model, optimizer, and metrics.
     """
@@ -84,6 +84,8 @@ class TrainState(Generic[M], nnx.Optimizer):
 class BaseTrainerConfig:
     """Base configuration for the trainer."""
 
+    batch_size: int = 64
+    """The global batch size to be sharded across all devices."""
     console: Console = console
     """The console to use for logging."""
     checkpoint_path: str = "checkpoints/nnx-cnn/mnist"
@@ -277,6 +279,17 @@ class SupervisedTrainer(BaseTrainer[M], ABC):
     """
 
     trainer_config: SupervisedTrainerConfig
+
+    def _epoch_size(self, loader):
+        """Calculates the size of an epoch.
+
+        Args:
+            loader: The data loader.
+
+        Returns:
+            The number of samples in an epoch, or None if the loader is empty.
+        """
+        return len(loader) * self.trainer_config.batch_size if len(loader) else None
 
     @abstractmethod
     def train(self, train_loader):

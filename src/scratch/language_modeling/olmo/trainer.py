@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from scratch.llm.olmo.modeling.model import OLMo
+from scratch.language_modeling.olmo.modeling.model import OLMo
 
 
 @dataclass

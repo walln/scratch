@@ -3,15 +3,17 @@
 import torch
 from torch import einsum, nn
 
-from scratch.llm.olmo.modeling.buffer_cache import BufferCache
-from scratch.llm.olmo.modeling.initializations import _non_meta_init_device
-from scratch.llm.olmo.modeling.model import OLMoBlockConfig
+from scratch.language_modeling.olmo.modeling.buffer_cache import BufferCache
+from scratch.language_modeling.olmo.modeling.config import OLMoConfig
+from scratch.language_modeling.olmo.modeling.initializations import (
+    _non_meta_init_device,
+)
 
 
 class RotaryEmbedding(nn.Module):
     """[Rotary positional embeddings (RoPE)](https://arxiv.org/abs/2104.09864)."""
 
-    def __init__(self, config: OLMoBlockConfig, cache: BufferCache):
+    def __init__(self, config: OLMoConfig, cache: BufferCache):
         """Initialize RotaryEmbedding.
 
         Args:

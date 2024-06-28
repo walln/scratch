@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from scratch.llm.olmo.modeling.config import OLMoConfig
+from scratch.language_modeling.olmo.modeling.config import OLMoConfig
 
 
 class LayerNormBase(nn.Module):

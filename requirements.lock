@@ -51,6 +51,7 @@ filelock==3.13.3
     # via datasets
     # via huggingface-hub
     # via torch
+    # via transformers
 flax==0.8.4
     # via scratch
 fonttools==4.51.0
@@ -69,6 +70,8 @@ gitpython==3.1.43
     # via wandb
 huggingface-hub==0.23.4
     # via datasets
+    # via tokenizers
+    # via transformers
 idna==3.6
     # via requests
     # via yarl
@@ -152,6 +155,7 @@ numpy==1.26.4
     # via scratch
     # via tensorstore
     # via torchvision
+    # via transformers
 nvidia-cublas-cu12==12.1.3.1
     # via jax
     # via nvidia-cudnn-cu12
@@ -206,6 +210,7 @@ packaging==24.0
     # via datasets
     # via huggingface-hub
     # via matplotlib
+    # via transformers
 pandas==2.2.2
     # via datasets
 pillow==10.3.0
@@ -236,14 +241,20 @@ pyyaml==6.0.1
     # via flax
     # via huggingface-hub
     # via orbax-checkpoint
+    # via transformers
     # via wandb
+regex==2024.5.15
+    # via transformers
 requests==2.32.3
     # via datasets
     # via huggingface-hub
+    # via transformers
     # via wandb
 rich==13.7.1
     # via flax
     # via typer
+safetensors==0.4.3
+    # via transformers
 scikit-learn==1.4.1.post1
     # via scratch
 scipy==1.13.0
@@ -273,6 +284,8 @@ tensorstore==0.1.56
     # via orbax-checkpoint
 threadpoolctl==3.4.0
     # via scikit-learn
+tokenizers==0.19.1
+    # via transformers
 toolz==0.12.1
     # via chex
 torch==2.3.1
@@ -283,6 +296,9 @@ torchvision==0.18.1
 tqdm==4.66.4
     # via datasets
     # via huggingface-hub
+    # via scratch
+    # via transformers
+transformers==4.42.3
     # via scratch
 typeguard==2.13.3
     # via jaxtyping

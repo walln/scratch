@@ -4,11 +4,14 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from scratch.llm.olmo.modeling.activations import SwiGLU
-from scratch.llm.olmo.modeling.buffer_cache import BufferCache
-from scratch.llm.olmo.modeling.config import OLMoConfig
-from scratch.llm.olmo.modeling.initializations import ModuleType, init_weights
-from scratch.llm.olmo.modeling.rotary_embedding import RotaryEmbedding
+from scratch.language_modeling.olmo.modeling.activations import SwiGLU
+from scratch.language_modeling.olmo.modeling.buffer_cache import BufferCache
+from scratch.language_modeling.olmo.modeling.config import OLMoConfig
+from scratch.language_modeling.olmo.modeling.initializations import (
+    ModuleType,
+    init_weights,
+)
+from scratch.language_modeling.olmo.modeling.rotary_embedding import RotaryEmbedding
 
 
 class OLMoBlock(nn.Module):

@@ -5,7 +5,7 @@ from enum import Enum
 import torch
 from torch import nn
 
-from scratch.llm.olmo.modeling.model import OLMoBlockConfig
+from scratch.language_modeling.olmo.modeling.model import OLMoConfig
 
 
 class ModuleType(Enum):
@@ -18,7 +18,7 @@ class ModuleType(Enum):
 
 
 def init_weights(
-    config: OLMoBlockConfig,
+    config: OLMoConfig,
     module: nn.Linear | nn.Embedding,
     d: int | None = None,
     layer_id: int | None = None,
@@ -38,7 +38,7 @@ def init_weights(
     raise NotImplementedError()
 
 
-def _non_meta_init_device(config: OLMoBlockConfig) -> torch.device:
+def _non_meta_init_device(config: OLMoConfig) -> torch.device:
     if config.init_device is not None and config.init_device != "meta":
         return torch.device(config.init_device)
     else:

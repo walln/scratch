@@ -29,8 +29,6 @@ M = TypeVar("M", bound=nnx.Module)
 class ImageClassificationParallelTrainerConfig(SupervisedTrainerConfig):
     """Configuration for the ImageClassificationParallelTrainer."""
 
-    batch_size: int = 64
-    """The global batch size to be sharded across all devices."""
     learning_rate: float = 0.005
     """The learning rate for the optimizer."""
     momentum: float = 0.9
@@ -69,17 +67,6 @@ class ImageClassificationParallelTrainer(SupervisedTrainer[M]):
             metrics,
         )
         return state
-
-    def _epoch_size(self, loader):
-        """Calculates the size of an epoch.
-
-        Args:
-            loader: The data loader.
-
-        Returns:
-            The number of samples in an epoch, or None if the loader is empty.
-        """
-        return len(loader) * self.trainer_config.batch_size if len(loader) else None
 
     def train(
         self,

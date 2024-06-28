@@ -3,11 +3,14 @@
 import torch
 from torch import nn
 
-from scratch.llm.olmo.modeling.blocks.base import OLMoBlock
-from scratch.llm.olmo.modeling.buffer_cache import BufferCache
-from scratch.llm.olmo.modeling.config import OLMoConfig
-from scratch.llm.olmo.modeling.initializations import ModuleType, init_weights
-from scratch.llm.olmo.modeling.layer_norm import create_layer_norm
+from scratch.language_modeling.olmo.modeling.blocks.base import OLMoBlock
+from scratch.language_modeling.olmo.modeling.buffer_cache import BufferCache
+from scratch.language_modeling.olmo.modeling.config import OLMoConfig
+from scratch.language_modeling.olmo.modeling.initializations import (
+    ModuleType,
+    init_weights,
+)
+from scratch.language_modeling.olmo.modeling.layer_norm import create_layer_norm
 
 
 class SequentialOLMoBlock(OLMoBlock):
