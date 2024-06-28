@@ -377,7 +377,7 @@ class PatchEmbedding(nnx.Module):
         Returns:
             Output array with shape (B, N, embed_dim) where N is the number of patches.
         """
-        B, _ = x.shape
+        B, _, _, _ = x.shape
         x = self.conv(x)
         x = x.reshape((B, -1, self.embed_dim))
         x = self.norm(x)

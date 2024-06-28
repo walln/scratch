@@ -192,13 +192,10 @@ def load_hf_dataset(
         data = data.shuffle().with_format("torch")
 
     if validate:
-        data = data.filter(validate)
+        data = data.filter(validate).with_format("torch")
 
     if prepare:
-        data = data.map(prepare)
-
-    if shuffle:
-        data = data.shuffle()
+        data = data.map(prepare).with_format("torch")
 
     return data.with_format("torch")
 
