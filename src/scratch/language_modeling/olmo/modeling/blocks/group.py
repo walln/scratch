@@ -5,7 +5,7 @@ from collections.abc import Iterable
 import torch
 from torch import nn
 
-from scratch.llm.olmo.modeling.config import OLMoConfig
+from scratch.language_modeling.olmo.modeling.config import OLMoConfig
 
 
 class BlockGroup(nn.ModuleList):

@@ -2,7 +2,7 @@
 
 import torch
 
-from scratch.llm.olmo.modeling.buffer_cache import BufferCache
+from scratch.language_modeling.olmo.modeling.buffer_cache import BufferCache
 
 
 def causal_attention_bias(seq_len: int, device: torch.device) -> torch.FloatTensor:
