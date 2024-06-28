@@ -1,4 +1,32 @@
-"""Dataset utilities for image classification."""
+"""Dataset utilities for image classification.
+
+This module provides utilities for loading and preparing image classification
+datasets. It includes functions for loading datasets from Hugging Face datasets
+library, creating dummy datasets, and transforming datasets for training.
+
+Example:
+    To load the MNIST dataset:
+
+    >>> mnist = mnist_dataset(batch_size=32)
+
+    To load the Tiny ImageNet dataset:
+
+    >>> tiny_imagenet = tiny_imagenet_dataset(batch_size=32)
+
+    To create a dummy image classification dataset:
+
+    >>> dummy = dummy_image_classification_dataset(batch_size=32)
+
+    To patch the warning message for datasets caused by a bug with recent PyTorch:
+
+    >>> patch_datasets_warning()
+
+    To convert a batch of images from NCHW to NHWC format:
+
+    >>> image = torch.randn(32, 3, 28, 28)
+    >>> image = nchw_to_nhwc(image)
+
+"""
 
 import inspect
 import warnings

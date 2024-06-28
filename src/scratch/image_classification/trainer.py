@@ -1,4 +1,9 @@
-"""Image classification trainer."""
+"""Image classification trainer using NNX and SPMD parallelism.
+
+This module provides a trainer for training image classification models using the flax
+NNX API with SPMD parallelism. The trainer supports distributed training on multiple
+devices.
+"""
 
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -22,7 +27,7 @@ M = TypeVar("M", bound=nnx.Module)
 
 @dataclass
 class ImageClassificationParallelTrainerConfig(SupervisedTrainerConfig):
-    """Configuration for the CNNParallelTrainer."""
+    """Configuration for the ImageClassificationParallelTrainer."""
 
     batch_size: int = 64
     """The global batch size to be sharded across all devices."""
@@ -35,11 +40,23 @@ class ImageClassificationParallelTrainerConfig(SupervisedTrainerConfig):
 
 
 class ImageClassificationParallelTrainer(SupervisedTrainer[M]):
-    """Trains a CNN model using NNX and SPMD parallelism."""
+    """Trainer for image classification models using NNX and SPMD parallelism.
+
+    This class provides methods for training and evaluating image classification models
+    using NNX with support for SPMD parallelism. It includes methods for creating the
+    training state, performing training steps, and evaluating the model.
+    """
 
     trainer_config: ImageClassificationParallelTrainerConfig
 
     def _create_train_state(self):
+        """Creates the initial training state.
+
+        This includes the model, optimizer, and metrics.
+
+        Returns:
+            The initial training state.
+        """
         metrics = nnx.MultiMetric(
             accuracy=nnx.metrics.Accuracy(),
             loss=nnx.metrics.Average("loss"),
@@ -54,6 +71,14 @@ class ImageClassificationParallelTrainer(SupervisedTrainer[M]):
         return state
 
     def _epoch_size(self, loader):
+        """Calculates the size of an epoch.
+
+        Args:
+            loader: The data loader.
+
+        Returns:
+            The number of samples in an epoch, or None if the loader is empty.
+        """
         return len(loader) * self.trainer_config.batch_size if len(loader) else None
 
     def train(
@@ -63,7 +88,7 @@ class ImageClassificationParallelTrainer(SupervisedTrainer[M]):
         """Trains the model on the entire training dataset.
 
         Args:
-            train_loader: The training data loader
+            train_loader: The training data loader.
         """
 
         @nnx.jit

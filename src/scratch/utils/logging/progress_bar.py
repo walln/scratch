@@ -4,7 +4,11 @@ from rich.progress import MofNCompleteColumn, Progress, SpinnerColumn, TimeElaps
 
 
 def get_progress_widgets():
-    """Return a list of progress bar widgets."""
+    """The default progress bar widgets.
+
+    Returns:
+        The default progress bar widgets as a list.
+    """
     return [
         SpinnerColumn(),
         *Progress.get_default_columns(),

@@ -1,4 +1,8 @@
-"""Weights and Biases Logger."""
+"""Weights and Biases Logger.
+
+This module provides a logger for Weights & Biases. It includes methods for logging
+messages and metrics to the console and Weights & Biases.
+"""
 
 from typing import Any, Generic, TypeVar
 
@@ -9,12 +13,22 @@ TrainerConfig = TypeVar("TrainerConfig")
 
 
 class WeightsAndBiasesLogger(BaseLogger, Generic[ModelConfig, TrainerConfig]):
-    """A logger for Weights & Biases."""
+    """A logger for Weights & Biases.
+
+    This class provides methods for logging messages and metrics to the console and
+    Weights & Biases. Also logs to the console.
+    """
 
     def __init__(
         self, project: str, model_config: ModelConfig, trainer_config: TrainerConfig
     ):
-        """Initializes the logger."""
+        """Initializes the logger.
+
+        Args:
+            project: The name of the project.
+            model_config: The configuration for the model.
+            trainer_config: The configuration for the trainer.
+        """
         super().__init__()
         self.project = project
         self.model_config = model_config
@@ -34,7 +48,14 @@ class WeightsAndBiasesLogger(BaseLogger, Generic[ModelConfig, TrainerConfig]):
         )
 
     def _dataclass_to_dict(self, dataclass):
-        """Converts a dataclass to a dictionary."""
+        """Converts a dataclass to a dictionary.
+
+        Args:
+            dataclass: The dataclass to convert.
+
+        Returns:
+            The dictionary representation of the dataclass.
+        """
         return dataclass.__dict__
 
     def log(self, *objects: Any):

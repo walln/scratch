@@ -1,4 +1,8 @@
-"""Abstract trainer class for training models."""
+"""Abstract trainer class for training models using Flax' nnx api.
+
+This module provides an abstract base class for training models.
+It includes support for training state management, checkpointing, and logging.
+"""
 
 import os
 from abc import ABC, abstractmethod
@@ -25,24 +29,42 @@ M = TypeVar("M", bound=nnx.Module)
 
 
 class TrainState(Generic[M], nnx.Optimizer):
-    """Train state for the CNN model."""
+    """Train state for the CNN model.
+
+    This class manages the training state, including the model, optimizer, and metrics.
+    """
 
     model: M
     tx: optax.GradientTransformation
     metrics: nnx.MultiMetric
 
     def __init__(self, model, tx, metrics: nnx.MultiMetric):
-        """Initializes the train state."""
+        """Initializes the train state.
+
+        Args:
+            model: The model to train.
+            tx: The optimizer transformation.
+            metrics: The metrics to track.
+        """
         self.metrics = metrics
         super().__init__(model, tx)
 
     def update(self, *, grads, **updates):
-        """Updates the train state in-place."""
+        """Updates the train state in-place.
+
+        Args:
+            grads: The gradients to update the model with.
+            updates: The updates to apply to the metrics.
+        """
         self.metrics.update(**updates)
         super().update(grads)
 
     def update_metrics(self, **updates):
-        """Updates the metrics in-place."""
+        """Updates the metrics in-place.
+
+        Args:
+            updates: The updates to apply to the metrics.
+        """
         self.metrics.update(**updates)
 
     def reset_metrics(self):
@@ -50,7 +72,11 @@ class TrainState(Generic[M], nnx.Optimizer):
         self.metrics.reset()
 
     def compute_metrics(self):
-        """Realizes the metric values."""
+        """Realizes the metric values.
+
+        Returns:
+            The computed metrics.
+        """
         return self.metrics.compute()
 
 
@@ -74,7 +100,12 @@ class BaseTrainerConfig:
 
 
 class BaseTrainer(Generic[M], ABC):
-    """Abstract trainer class for training models."""
+    """Abstract trainer class for training models.
+
+    This class provides an abstract base for creating trainers for various models.
+    It includes methods for creating the training state, logging metrics, and
+    checkpointing.
+    """
 
     def __init__(
         self,
@@ -85,9 +116,9 @@ class BaseTrainer(Generic[M], ABC):
         """Initializes a trainer for a specific objective.
 
         Args:
-            model: The model to train
-            trainer_config: The configuration for the trainer
-            logger: The logger to use
+            model: The model to train.
+            trainer_config: The configuration for the trainer.
+            logger: The logger to use.
         """
         self.model = model
         self.trainer_config = trainer_config
@@ -104,6 +135,14 @@ class BaseTrainer(Generic[M], ABC):
 
     @abstractmethod
     def _create_train_state(self) -> TrainState[M]:
+        """Creates the initial training state.
+
+        This method should be implemented by subclasses to initialize the training
+        state.
+
+        Returns:
+            The initial training state.
+        """
         pass
 
     @abstractmethod
@@ -130,6 +169,9 @@ class BaseTrainer(Generic[M], ABC):
             step_type: The type of step
             log_to_console: Whether to log to the console
             reset_metrics: Whether to reset the metrics
+
+        Returns:
+            A dict of the computed metrics.
         """
         reported_metrics = {
             f"{step_type}_{metric}": value
@@ -152,10 +194,19 @@ class BaseTrainer(Generic[M], ABC):
 
     @property
     def checkpointing_enabled(self):
-        """Whether checkpointing is enabled."""
+        """Whether checkpointing is enabled.
+
+        Returns:
+            A boolean indicating whether checkpointing is enabled.
+        """
         return self.trainer_config.save_checkpoint
 
     def _setup_checkpoint_manager(self):
+        """Sets up the checkpoint manager.
+
+        Returns:
+            The checkpoint manager.
+        """
         opts = ocp.CheckpointManagerOptions(max_to_keep=3, cleanup_tmp_directories=True)
         return ocp.CheckpointManager(
             self.trainer_config.checkpoint_path,
@@ -167,8 +218,8 @@ class BaseTrainer(Generic[M], ABC):
         """Saves a checkpoint of the model and optimizer state.
 
         Args:
-            step: The current step
-            metrics: The metrics to save
+            step: The current step.
+            metrics: The metrics to save.
         """
         self.logger.log(f"Saving checkpoint at step {step}")
         state = nnx.state(self.model)
@@ -184,7 +235,11 @@ class BaseTrainer(Generic[M], ABC):
         self.checkpoint_manager.wait_until_finished()
 
     def load_checkpoint(self, step: int = 0):
-        """Loads the latest checkpoint."""
+        """Loads the latest checkpoint.
+
+        Args:
+            step: The step to load the checkpoint from.
+        """
         model = nnx.eval_shape(lambda: self.model)
         state = nnx.state(model)
 
@@ -215,7 +270,11 @@ class SupervisedTrainerConfig(BaseTrainerConfig):
 
 
 class SupervisedTrainer(BaseTrainer[M], ABC):
-    """Abstract trainer class for supervised learning."""
+    """Abstract trainer class for supervised learning.
+
+    This class extends the BaseTrainer to provide additional functionality
+    specific to supervised learning tasks.
+    """
 
     trainer_config: SupervisedTrainerConfig
 

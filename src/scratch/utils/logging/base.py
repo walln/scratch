@@ -1,4 +1,8 @@
-"""Base logger for loggers to implement."""
+"""Base logger for loggers to implement.
+
+This module provides the base logger class for loggers to implement.
+It also provides a no-op logger that does nothing for testing purposes.
+"""
 
 from abc import ABC, abstractmethod
 from typing import Any

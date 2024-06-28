@@ -1,7 +1,7 @@
 """Swin Transformer Implementation.
 
-This file contains the implementation of the Swin Transformer model using the Flax nnx
-library. The Swin Transformer is a hierarchical vision transformer that uses shifted
+This file contains the implementation of the Swin Transformer model.
+The Swin Transformer is a hierarchical vision transformer that uses shifted
 windows for computing self-attention, which improves both efficiency and scalability
 for high-resolution vision tasks.
 

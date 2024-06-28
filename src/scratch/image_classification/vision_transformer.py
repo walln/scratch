@@ -1,4 +1,14 @@
-"""A simple vision transformer model."""
+"""Vision Transformer model implementation.
+
+This file contains the implementation of a simple Vision Transformer (ViT) model.
+The Vision Transformer applies the transformer architecture to image classification
+tasks by dividing images into patches and processing them as sequences.
+
+Reference:
+    Dosovitskiy, A., et al. (2021). An Image is Worth 16x16 Words: Transformers for
+    Image Recognition at Scale.
+    arXiv preprint arXiv:2010.11929. https://arxiv.org/abs/2010.11929
+"""
 
 from dataclasses import dataclass
 
@@ -39,7 +49,12 @@ class VisionTransformerConfig:
 
 
 class Block(nnx.Module):
-    """A transformer block."""
+    """A vision transformer block.
+
+    This block consists of a multi-head self-attention layer followed by a feedforward
+    neural network. Each of these layers is preceded by a layer normalization and
+    followed by a dropout layer.
+    """
 
     def __init__(
         self,
@@ -53,11 +68,11 @@ class Block(nnx.Module):
         """Initializes the transformer block.
 
         Args:
-          embed_dim: Dimension of the embedding
-          hidden_dim: Dimension of the hidden layer
-          n_heads: Number of heads
-          dropout_rate: Dropout rate
-          rngs: Random number generators
+          embed_dim: Dimension of the embedding.
+          hidden_dim: Dimension of the hidden layer.
+          n_heads: Number of heads.
+          dropout_rate: Dropout rate.
+          rngs: Random number generators.
         """
         self.ln1 = nnx.LayerNorm(embed_dim, rngs=rngs)
         self.ln2 = nnx.LayerNorm(embed_dim, rngs=rngs)
@@ -71,13 +86,13 @@ class Block(nnx.Module):
         )
 
     def __call__(self, x: jnp.ndarray):
-        """Forward pass of the model.
+        """Forward pass of the transformer block.
 
         Args:
-          x: Input array
+          x: Input array.
 
         Returns:
-          Output array
+          Output array.
         """
         input_x = self.ln1(x)
         x = x + self.attn(input_x)
@@ -86,14 +101,18 @@ class Block(nnx.Module):
 
 
 class VisionTransformer(nnx.Module):
-    """A simple vision transformer model."""
+    """A simple vision transformer model.
+
+    This class implements the Vision Transformer (ViT) model, which divides images into
+    patches and applies a transformer to process these patches as sequences.
+    """
 
     def __init__(self, model_config: VisionTransformerConfig, *, rngs: nnx.Rngs):
         """Initializes the simple vision transformer model.
 
         Args:
-          model_config: Configuration for the model
-          rngs: Random number generators
+          model_config: Configuration for the model.
+          rngs: Random number generators.
         """
         self.config = model_config
         height, width, _ = self.config.input_shape
@@ -137,15 +156,14 @@ class VisionTransformer(nnx.Module):
         """Forward pass of the model.
 
         Args:
-          x: Input array
-          train: Whether the model is in training mode
+          x: Input array of shape (batch_size, height, width, channels).
+          train: Whether the model is in training mode.
 
         Returns:
-          Output array
+          Output array of shape (batch_size, num_classes).
         """
 
         def img_to_patch(x: jnp.ndarray, patch_size: int):
-            # assuming x is of shape (B, H, W, C)
             B, H, W, C = x.shape
             x = x.reshape(
                 B, H // patch_size, patch_size, W // patch_size, patch_size, C
@@ -162,7 +180,7 @@ class VisionTransformer(nnx.Module):
         cls_token = jnp.broadcast_to(
             self.cls_token.value, (B, 1, self.config.embed_dim)
         )
-        x = jnp.concatenate([cls_token, x], axis=1)  # type: ignore - nnx.Param should be ArrayLike?
+        x = jnp.concatenate([cls_token, x], axis=1)
         x = x + self.pos_embedding[:, : T + 1]
 
         # Apply Transformer
