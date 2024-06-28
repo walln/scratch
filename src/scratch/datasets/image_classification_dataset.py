@@ -198,9 +198,9 @@ def load_hf_dataset(
         data = data.map(prepare)
 
     if shuffle:
-        data = data.shuffle().with_format("torch")
+        data = data.shuffle()
 
-    return data
+    return data.with_format("torch")
 
 
 def dummy_image_classification_dataset(
