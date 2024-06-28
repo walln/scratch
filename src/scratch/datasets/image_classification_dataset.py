@@ -157,7 +157,7 @@ def load_hf_dataset(
         The IterableDataset object
     """
     data = load_dataset(
-        dataset_name, split=dataset_split, trust_remote_code=True
+        dataset_name, split=dataset_split, trust_remote_code=True, streaming=True
     ).with_format("torch")
 
     if shuffle:
@@ -189,7 +189,7 @@ def dummy_image_classification_dataset(
         shape: the shape of the images
     """
     metadata = ImageClassificationDatasetMetadata(
-        num_classes=10, input_shape=(28, 28, 1), name="dummy"
+        num_classes=10, input_shape=shape, name="dummy"
     )
 
     def gen():
