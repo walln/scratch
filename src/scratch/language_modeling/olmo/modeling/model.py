@@ -7,19 +7,21 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from scratch.llm.olmo.modeling.blocks.group import BlockGroup
-from scratch.llm.olmo.modeling.blocks.sequential import SequentialOLMoBlock
-from scratch.llm.olmo.modeling.buffer_cache import BufferCache
-from scratch.llm.olmo.modeling.config import OLMoConfig
-from scratch.llm.olmo.modeling.dropout import Dropout
-from scratch.llm.olmo.modeling.initializations import (
+from scratch.language_modeling.olmo.modeling.blocks.group import BlockGroup
+from scratch.language_modeling.olmo.modeling.blocks.sequential import (
+    SequentialOLMoBlock,
+)
+from scratch.language_modeling.olmo.modeling.buffer_cache import BufferCache
+from scratch.language_modeling.olmo.modeling.config import OLMoConfig
+from scratch.language_modeling.olmo.modeling.dropout import Dropout
+from scratch.language_modeling.olmo.modeling.initializations import (
     ModuleType,
     _non_meta_init_device,
     init_weights,
 )
-from scratch.llm.olmo.modeling.layer_norm import create_layer_norm
-from scratch.llm.olmo.utils.attention import get_causal_attention_bias
-from scratch.llm.olmo.utils.numerical_stability import ensure_finite
+from scratch.language_modeling.olmo.modeling.layer_norm import create_layer_norm
+from scratch.language_modeling.olmo.utils.attention import get_causal_attention_bias
+from scratch.language_modeling.olmo.utils.numerical_stability import ensure_finite
 
 base_config = OLMoConfig()
 

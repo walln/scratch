@@ -95,6 +95,7 @@ filelock==3.13.3
     # via datasets
     # via huggingface-hub
     # via torch
+    # via transformers
     # via virtualenv
 flax==0.8.4
     # via scratch
@@ -122,6 +123,8 @@ httpx==0.27.0
     # via jupyterlab
 huggingface-hub==0.23.4
     # via datasets
+    # via tokenizers
+    # via transformers
 identify==2.5.35
     # via pre-commit
 idna==3.6
@@ -304,6 +307,7 @@ numpy==1.26.4
     # via scratch
     # via tensorstore
     # via torchvision
+    # via transformers
 nvidia-cublas-cu12==12.1.3.1
     # via jax
     # via nvidia-cudnn-cu12
@@ -371,6 +375,7 @@ packaging==24.0
     # via pytest
     # via qtconsole
     # via qtpy
+    # via transformers
 pandas==2.2.2
     # via datasets
 pandocfilters==1.5.1
@@ -437,6 +442,7 @@ pyyaml==6.0.1
     # via jupyter-events
     # via orbax-checkpoint
     # via pre-commit
+    # via transformers
     # via wandb
 pyzmq==26.0.3
     # via ipykernel
@@ -452,10 +458,13 @@ referencing==0.35.1
     # via jsonschema
     # via jsonschema-specifications
     # via jupyter-events
+regex==2024.5.15
+    # via transformers
 requests==2.32.3
     # via datasets
     # via huggingface-hub
     # via jupyterlab-server
+    # via transformers
     # via wandb
 rfc3339-validator==0.1.4
     # via jsonschema
@@ -470,6 +479,8 @@ rpds-py==0.18.1
     # via jsonschema
     # via referencing
 ruff==0.4.10
+safetensors==0.4.3
+    # via transformers
 scikit-learn==1.4.1.post1
     # via scratch
 scipy==1.13.0
@@ -519,6 +530,8 @@ threadpoolctl==3.4.0
     # via scikit-learn
 tinycss2==1.3.0
     # via nbconvert
+tokenizers==0.19.1
+    # via transformers
 toolz==0.12.1
     # via chex
 torch==2.3.1
@@ -537,6 +550,7 @@ tqdm==4.66.4
     # via datasets
     # via huggingface-hub
     # via scratch
+    # via transformers
 traitlets==5.14.3
     # via comm
     # via ipykernel
@@ -553,6 +567,8 @@ traitlets==5.14.3
     # via nbconvert
     # via nbformat
     # via qtconsole
+transformers==4.42.3
+    # via scratch
 typeguard==2.13.3
     # via jaxtyping
 typer==0.12.2
