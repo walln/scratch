@@ -1,4 +1,14 @@
-"""ResNet model."""
+"""ResNet model implementation.
+
+This file contains the implementation of the ResNet model.
+The ResNet model is a widely-used convolutional neural network architecture known for
+its residual layers, which helps in training deep networks effectively.
+
+Reference:
+    He, K., Zhang, X., Ren, S., & Sun, J. (2016). Deep Residual Learning for Image
+    Recognition.
+    arXiv preprint arXiv:1512.03385. https://arxiv.org/abs/1512.03385
+"""
 
 from functools import partial
 from typing import Literal
@@ -28,15 +38,15 @@ class ResNetConfig:
         """Initializes the ResNet configuration.
 
         Args:
-            num_classes: Number of output classes
-            input_channels: Number of input channels
-            depths: List of depths for each stage
-            bottleneck: Whether to use bottleneck blocks
+            num_classes: Number of output classes.
+            input_channels: Number of input channels.
+            depths: List of depths for each stage.
+            bottleneck: Whether to use bottleneck blocks.
         """
         self.num_classes = num_classes
         self.input_channels = input_channels
-        self.depths = depths  # List of depths for each stage
-        self.bottleneck = bottleneck  # Whether to use bottleneck blocks
+        self.depths = depths
+        self.bottleneck = bottleneck
 
     @classmethod
     def from_preset(
@@ -50,12 +60,12 @@ class ResNetConfig:
         """Creates a ResNetConfig from a preset.
 
         Args:
-            preset_name: Name of the preset (e.g., 'resnet18')
-            num_classes: Number of output classes
-            input_channels: Number of input channels
+            preset_name: Name of the preset (e.g., 'resnet18').
+            num_classes: Number of output classes.
+            input_channels: Number of input channels.
 
         Returns:
-            A ResNetConfig instance with the preset configuration
+            A ResNetConfig instance with the preset configuration.
         """
         PRESETS = {
             "resnet18": {"depths": [2, 2, 2, 2], "bottleneck": False},
@@ -71,16 +81,21 @@ class ResNetConfig:
 
 
 class ResNetBlock(nnx.Module):
-    """A standard ResNet block."""
+    """A standard ResNet block.
+
+    ResNet block consists of two convolutional layers with a shortcut connection.
+    A ReLU activation function is applied after each convolutional layer. The shortcut
+    connection is a skip connection that bypasses the convolutional layers.
+    """
 
     def __init__(self, in_channels, out_channels, *, strides=(1, 1), rngs: nnx.Rngs):
         """Initializes the ResNet block.
 
         Args:
-            in_channels: Number of input channels
-            out_channels: Number of output channels
-            strides: Strides for the first convolutional layer
-            rngs: Random number generators
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            strides: Strides for the first convolutional layer.
+            rngs: Random number generators.
         """
         self.conv1 = nnx.Conv(
             in_channels,
@@ -109,10 +124,10 @@ class ResNetBlock(nnx.Module):
         """Forward pass of the ResNet block.
 
         Args:
-            x: Input array
+            x: Input array.
 
         Returns:
-            Output array
+            Output array after applying the ResNet block.
         """
         shortcut = self.shortcut(x)
         x = nnx.relu(self.conv1(x))
@@ -121,16 +136,21 @@ class ResNetBlock(nnx.Module):
 
 
 class BottleneckResNetBlock(nnx.Module):
-    """A bottleneck ResNet block."""
+    """A bottleneck ResNet block.
+
+    This block consists of three convolutional layers: a 1x1 convolution for
+    reducing the dimensionality, a 3x3 convolution, and another 1x1 convolution
+    for restoring the dimensionality. It includes a residual connection.
+    """
 
     def __init__(self, in_channels, out_channels, *, strides=(1, 1), rngs: nnx.Rngs):
         """Initializes the bottleneck ResNet block.
 
         Args:
-            in_channels: Number of input channels
-            out_channels: Number of output channels
-            strides: Strides for the first convolutional layer
-            rngs: Random number generators
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            strides: Strides for the first convolutional layer.
+            rngs: Random number generators.
         """
         bottleneck_channels = out_channels // 4
         self.conv1 = nnx.Conv(
@@ -163,10 +183,10 @@ class BottleneckResNetBlock(nnx.Module):
         """Forward pass of the bottleneck ResNet block.
 
         Args:
-            x: Input array
+            x: Input array.
 
         Returns:
-            Output array
+            Output array.
         """
         shortcut = self.shortcut(x)
         x = nnx.relu(self.conv1(x))
@@ -176,14 +196,19 @@ class BottleneckResNetBlock(nnx.Module):
 
 
 class ResNet(nnx.Module):
-    """A configurable ResNet model."""
+    """A configurable ResNet model.
+
+    This class implements the ResNet architecture with a configurable number of
+    layers and blocks. The architecture can be adjusted to use standard or
+    bottleneck blocks.
+    """
 
     def __init__(self, config: ResNetConfig, *, rngs: nnx.Rngs):
         """Initializes the configurable ResNet model.
 
         Args:
-            config: Configuration for the model
-            rngs: Random number generators
+            config: Configuration for the model.
+            rngs: Random number generators.
         """
         self.config = config
         self.conv1 = nnx.Conv(
@@ -210,11 +235,11 @@ class ResNet(nnx.Module):
         """Creates a ResNet layer composed of multiple ResNet blocks.
 
         Args:
-            in_channels: Number of input channels
-            out_channels: Number of output channels
-            blocks: Number of blocks in the layer
-            rngs: Random number generators
-            strides: Strides for the first block in the layer
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            blocks: Number of blocks in the layer.
+            rngs: Random number generators.
+            strides: Strides for the first block in the layer.
 
         Returns:
             A ResNet layer
@@ -235,13 +260,13 @@ class ResNet(nnx.Module):
         """Creates a ResNet block or bottleneck block based on the configuration.
 
         Args:
-            in_channels: Number of input channels
-            out_channels: Number of output channels
-            strides: Strides for the first convolutional layer
-            rngs: Random number generators
+            in_channels: Number of input channels.
+            out_channels: Number of output channels.
+            strides: Strides for the first convolutional layer.
+            rngs: Random number generators.
 
         Returns:
-            A ResNet block or bottleneck block
+            A ResNet block or bottleneck block.
         """
         if self.config.bottleneck:
             return BottleneckResNetBlock(
@@ -254,10 +279,10 @@ class ResNet(nnx.Module):
         """Forward pass of the model.
 
         Args:
-            x: Input array
+            x: Input array.
 
         Returns:
-            Output array
+            Output array.
         """
         x = nnx.relu(self.conv1(x))
         x = self.max_pool(x)

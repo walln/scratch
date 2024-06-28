@@ -1,4 +1,13 @@
-"""CNN Model using NNX api from Flax."""
+"""CNN model implementation.
+
+This file contains the implementation of a simple CNN model.
+The CNN model is designed for image classification tasks and is particularly suited for
+simple datasets such as MNIST.
+
+Reference:
+    LeCun, Y., Bottou, L., Bengio, Y., & Haffner, P. (1998). Gradient-based learning
+    applied to document recognition. Proceedings of the IEEE.
+"""
 
 from dataclasses import dataclass
 from functools import partial
@@ -25,14 +34,19 @@ class CNNConfig:
 
 
 class CNN(nnx.Module):
-    """A simple CNN model."""
+    """A simple CNN model.
+
+    This class implements a basic Convolutional Neural Network (CNN) for image
+    classification. It consists of two convolutional layers followed by two
+    fully connected layers.
+    """
 
     def __init__(self, config: CNNConfig, *, rngs: nnx.Rngs):
         """Initializes the simple CNN model.
 
         Args:
-            config: Configuration for the model
-            rngs: Random number generators
+            config: Configuration for the model.
+            rngs: Random number generators.
         """
         self.conv1 = nnx.Conv(config.input_shape[-1], 32, kernel_size=(3, 3), rngs=rngs)
         self.conv2 = nnx.Conv(32, 64, kernel_size=(3, 3), rngs=rngs)
@@ -44,10 +58,10 @@ class CNN(nnx.Module):
         """Forward pass of the model.
 
         Args:
-            x: Input array
+            x: Input array of shape (batch_size, height, width, channels).
 
         Returns:
-            Output array
+            Output array of shape (batch_size, num_classes).
         """
         x = self.avg_pool(nnx.relu(self.conv1(x)))
         x = self.avg_pool(nnx.relu(self.conv2(x)))
