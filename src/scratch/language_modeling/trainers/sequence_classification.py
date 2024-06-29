@@ -53,7 +53,10 @@ class SequenceClassificationTrainer(SupervisedTrainer[M]):
         @nnx.jit
         def train_step(model: M, train_state: TrainState, batch: dict):
             def loss_fn(model: Callable):
-                logits = model(batch, train=True)
+                logits = model(
+                    input_ids=batch["input_ids"],
+                    train=True,
+                )
                 loss = optax.softmax_cross_entropy(
                     logits=logits, labels=batch["labels"]
                 ).mean()
@@ -78,19 +81,13 @@ class SequenceClassificationTrainer(SupervisedTrainer[M]):
                     total=self._epoch_size(train_loader),
                 )
                 for batch in train_loader:
-                    input_ids = jax.device_put(batch["input_ids"], input_sharding)
-                    token_type_ids = jax.device_put(
-                        batch["token_type_ids"], input_sharding
+                    input_ids = jax.device_put(
+                        batch["input_ids"].numpy(), input_sharding
                     )
-                    attention_mask = jax.device_put(
-                        batch["attention_mask"], input_sharding
-                    )
-                    labels = jax.device_put(batch["label"], target_sharding)
+                    labels = jax.device_put(batch["label"].numpy(), target_sharding)
 
                     train_batch = {
                         "input_ids": input_ids,
-                        "token_type_ids": token_type_ids,
-                        "attention_mask": attention_mask,
                         "labels": labels,
                     }
 
@@ -113,7 +110,10 @@ class SequenceClassificationTrainer(SupervisedTrainer[M]):
 
         @nnx.jit
         def eval_step(model: M, train_state: TrainState, batch: dict):
-            logits = model(batch)  # type: ignore - model is a generic and python generic interescion types are not supported
+            logits = model(
+                input_ids=batch["input_ids"],
+                train=True,
+            )  # type: ignore - generic type tricks
             train_state.update_metrics(
                 loss=0.0, logits=logits, labels=jnp.argmax(batch["labels"], axis=-1)
             )
@@ -129,19 +129,14 @@ class SequenceClassificationTrainer(SupervisedTrainer[M]):
                     total=self._epoch_size(test_loader),
                 )
                 for batch in test_loader:
-                    input_ids = jax.device_put(batch["input_ids"], input_sharding)
-                    token_type_ids = jax.device_put(
-                        batch["token_type_ids"], input_sharding
+                    input_ids = jax.device_put(
+                        batch["input_ids"].numpy(), input_sharding
                     )
-                    attention_mask = jax.device_put(
-                        batch["attention_mask"], input_sharding
-                    )
-                    labels = jax.device_put(batch["label"], target_sharding)
+
+                    labels = jax.device_put(batch["label"].numpy(), target_sharding)
 
                     eval_batch = {
                         "input_ids": input_ids,
-                        "token_type_ids": token_type_ids,
-                        "attention_mask": attention_mask,
                         "labels": labels,
                     }
 
