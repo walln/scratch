@@ -2,7 +2,6 @@
 
 import pytest
 import torch
-
 from scratch.deep_learning.torch_layers.attention import MultiHeadAttention
 
 

@@ -1,0 +1,33 @@
+name: CI
+on:
+    push:
+        branches:
+        - '**'
+
+jobs:
+    ci:
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+          
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Install a specific version
+              uses: eifinger/setup-rye@v3
+              with:
+                enable-cache: true
+                version: 'latest'
+
+            - name: Install dependencies
+              run: rye sync
+
+            - name: Lint
+              run: rye run ruff check --verbose
+
+            - name: Format
+              run: rye format -- --check
+
+            - name: Test
+              run: rye test
+
+
