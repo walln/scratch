@@ -33,12 +33,10 @@ import torch
 import torch.nn.functional as F
 from datasets import IterableDataset, load_dataset
 from torch import Tensor
-from torch.utils.data import DataLoader as TorchDataLoader
 from torchvision import transforms
 
 from scratch.datasets.dataset import (
-    DataLoader,
-    Dataset,
+    create_dataset,
 )
 
 
@@ -65,54 +63,6 @@ class ImageClassificationDatasetMetadata:
     num_classes: int
     input_shape: tuple[int, int, int]
     name: str
-
-
-def create_dataset(
-    metadata: ImageClassificationDatasetMetadata,
-    train_data,
-    test_data,
-    batch_size: int,
-    transform: Callable[[ImageClassificationBatch], ImageClassificationBatch] | None,
-    collate_fn: Callable | None = None,
-):
-    """Create a Dataset object for image classification.
-
-    Args:
-        metadata: the metadata for the dataset
-        train_data: the training data
-        test_data: the test data
-        transform: the transformation function to apply to the data
-        batch_size: the batch size
-        collate_fn: the collate function for the data loader
-
-    Returns:
-        The dataset
-    """
-    train_loader = TorchDataLoader(
-        train_data,  # type: ignore - PyTorch types are incompatible
-        batch_size=batch_size,
-        collate_fn=collate_fn,
-    )
-    test_loader = TorchDataLoader(
-        test_data,  # type: ignore - PyTorch types are incompatible
-        batch_size=batch_size,
-        collate_fn=collate_fn,
-    )
-
-    train_loader = DataLoader[ImageClassificationBatch](
-        loader=train_loader, transform=transform
-    )
-    test_loader = DataLoader[ImageClassificationBatch](
-        loader=test_loader, transform=transform
-    )
-
-    return Dataset[ImageClassificationBatch, ImageClassificationDatasetMetadata](
-        batch_size=batch_size,
-        train=train_loader,
-        test=test_loader,
-        validation=None,
-        metadata=metadata,
-    )
 
 
 def load_hf_dataset(

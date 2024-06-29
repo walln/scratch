@@ -28,6 +28,13 @@ from dataclasses import dataclass
 
 import jax.numpy as jnp
 from flax import nnx
+from scratch.datasets.sequence_classification_dataset import (
+    dummy_sequence_classification_dataset,
+)
+from scratch.language_modeling.trainers.sequence_classification import (
+    SequenceClassificationTrainer,
+    SequenceClassificationTrainerConfig,
+)
 
 
 @dataclass
@@ -438,3 +445,18 @@ class BertForQuestionAnswering(nnx.Module):
         start_logits = start_logits.squeeze(-1)
         end_logits = end_logits.squeeze(-1)
         return start_logits, end_logits
+
+
+if __name__ == "__main__":
+    dataset = dummy_sequence_classification_dataset()
+    config = BertConfig()
+    model = BertForSequenceClassification(
+        config, num_labels=dataset.metadata.num_classes, rngs=nnx.Rngs(0)
+    )
+
+    trainer_config = SequenceClassificationTrainerConfig(
+        batch_size=2, num_labels=dataset.metadata.num_classes
+    )
+    trainer = SequenceClassificationTrainer(model, trainer_config=trainer_config)
+
+    trainer.train_and_evaluate(dataset.train, dataset.test)
