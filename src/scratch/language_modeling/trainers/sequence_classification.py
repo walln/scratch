@@ -47,6 +47,10 @@ class SequenceClassificationTrainer(SupervisedTrainer[M]):
         )
         return state
 
+    def _create_attention_mask(self, input_ids: jnp.ndarray) -> jnp.ndarray:
+        """Creates an attention mask from input IDs."""
+        return (input_ids != 0).astype(jnp.int32)[:, None, None, :]
+
     def train(self, train_loader: DataLoader[SequenceClassificationBatch]):
         """Trains the model on the entire training dataset."""
 
@@ -55,8 +59,10 @@ class SequenceClassificationTrainer(SupervisedTrainer[M]):
             def loss_fn(model: Callable):
                 logits = model(
                     input_ids=batch["input_ids"],
+                    attention_mask=batch["attention_mask"],
                     train=True,
                 )
+                assert logits.shape == batch["labels"].shape
                 loss = optax.softmax_cross_entropy(
                     logits=logits, labels=batch["labels"]
                 ).mean()
@@ -66,7 +72,10 @@ class SequenceClassificationTrainer(SupervisedTrainer[M]):
             (loss, logits), grads = grad_fn(model)
 
             train_state.update(
-                grads=grads, loss=loss, logits=logits, labels=batch["labels"]
+                grads=grads,
+                loss=loss,
+                logits=logits,
+                labels=jnp.argmax(batch["labels"], axis=-1),
             )
             return loss
 
@@ -84,10 +93,15 @@ class SequenceClassificationTrainer(SupervisedTrainer[M]):
                     input_ids = jax.device_put(
                         batch["input_ids"].numpy(), input_sharding
                     )
+                    attention_mask = jax.device_put(
+                        self._create_attention_mask(batch["input_ids"].numpy()),
+                        input_sharding,
+                    )
                     labels = jax.device_put(batch["label"].numpy(), target_sharding)
 
                     train_batch = {
                         "input_ids": input_ids,
+                        "attention_mask": attention_mask,
                         "labels": labels,
                     }
 
@@ -112,6 +126,7 @@ class SequenceClassificationTrainer(SupervisedTrainer[M]):
         def eval_step(model: M, train_state: TrainState, batch: dict):
             logits = model(
                 input_ids=batch["input_ids"],
+                attention_mask=batch["attention_mask"],
                 train=True,
             )  # type: ignore - generic type tricks
             train_state.update_metrics(
@@ -132,11 +147,16 @@ class SequenceClassificationTrainer(SupervisedTrainer[M]):
                     input_ids = jax.device_put(
                         batch["input_ids"].numpy(), input_sharding
                     )
+                    attention_mask = jax.device_put(
+                        self._create_attention_mask(batch["input_ids"].numpy()),
+                        input_sharding,
+                    )
 
                     labels = jax.device_put(batch["label"].numpy(), target_sharding)
 
                     eval_batch = {
                         "input_ids": input_ids,
+                        "attention_mask": attention_mask,
                         "labels": labels,
                     }
 

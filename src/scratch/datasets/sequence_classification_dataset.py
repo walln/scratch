@@ -20,6 +20,7 @@ from typing import TypedDict
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from datasets import IterableDataset, load_dataset
 from transformers import BertTokenizer
 
@@ -153,6 +154,7 @@ def dummy_sequence_classification_dataset(
         )
         input_ids = torch.tensor(input_ids, dtype=torch.int64)
         label = torch.tensor(label, dtype=torch.int64)
+        label = F.one_hot(label, num_classes=num_classes).to(torch.int32)
         return SequenceClassificationBatch(
             input_ids=input_ids,
             label=label,
