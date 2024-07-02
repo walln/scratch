@@ -31,6 +31,7 @@ from flax import nnx
 from scratch.datasets.sequence_classification_dataset import (
     dummy_sequence_classification_dataset,
 )
+from scratch.datasets.utils import patch_datasets_warning
 from scratch.language_modeling.trainers.sequence_classification import (
     SequenceClassificationTrainer,
     SequenceClassificationTrainerConfig,
@@ -160,6 +161,7 @@ class TransformerBlock(nnx.Module):
             num_heads=num_attention_heads,
             in_features=hidden_size,
             dropout_rate=attention_probs_dropout_prob,
+            decode=False,
             rngs=rngs,
         )
         self.attention_norm = nnx.LayerNorm(
@@ -183,7 +185,11 @@ class TransformerBlock(nnx.Module):
             train: Whether the model is in training mode. Defaults to False.
         """
         attention_output = self.attention(
-            hidden_states, hidden_states, hidden_states, mask=attention_mask
+            hidden_states,
+            hidden_states,
+            hidden_states,
+            mask=attention_mask,
+            deterministic=not train,
         )
         attention_output = self.attention_dropout(
             attention_output, deterministic=not train
@@ -230,20 +236,18 @@ class Encoder(nnx.Module):
             layer_norm_eps: Epsilon value for layer normalization.
             rngs: Random number generators.
         """
-        self.layers = nnx.Sequential(
-            *[
-                TransformerBlock(
-                    hidden_size=hidden_size,
-                    num_attention_heads=num_attention_heads,
-                    intermediate_size=intermediate_size,
-                    hidden_dropout_prob=hidden_dropout_prob,
-                    attention_probs_dropout_prob=attention_probs_dropout_prob,
-                    layer_norm_eps=layer_norm_eps,
-                    rngs=rngs,
-                )
-                for _ in range(num_hidden_layers)
-            ]
-        )
+        self.layers = [
+            TransformerBlock(
+                hidden_size=hidden_size,
+                num_attention_heads=num_attention_heads,
+                intermediate_size=intermediate_size,
+                hidden_dropout_prob=hidden_dropout_prob,
+                attention_probs_dropout_prob=attention_probs_dropout_prob,
+                layer_norm_eps=layer_norm_eps,
+                rngs=rngs,
+            )
+            for _ in range(num_hidden_layers)
+        ]
 
     def __call__(
         self, hidden_states: jnp.ndarray, attention_mask: jnp.ndarray, train=False
@@ -255,7 +259,8 @@ class Encoder(nnx.Module):
             attention_mask: Attention mask.
             train: Whether the model is in training mode. Defaults to False.
         """
-        hidden_states = self.layers(hidden_states, attention_mask, train)
+        for layer in self.layers:
+            hidden_states = layer(hidden_states, attention_mask, train)
         return hidden_states
 
 
@@ -296,20 +301,25 @@ class BertModel(nnx.Module):
     def __call__(
         self,
         input_ids: jnp.ndarray,
-        token_type_ids: jnp.ndarray,
         attention_mask: jnp.ndarray,
-        position_ids: jnp.ndarray,
+        token_type_ids: jnp.ndarray | None = None,
+        position_ids: jnp.ndarray | None = None,
         train=False,
     ):
         """Forward pass of the BERT model.
 
         Args:
             input_ids: Input token IDs.
-            token_type_ids: Token type IDs.
             attention_mask: Attention mask.
+            token_type_ids: Token type IDs.
             position_ids: Position IDs.
             train: Whether the model is in training mode. Defaults to False.
         """
+        if token_type_ids is None:
+            token_type_ids = jnp.zeros_like(input_ids)
+        if position_ids is None:
+            position_ids = jnp.arange(input_ids.shape[1])
+
         embedding_output = self.embeddings(
             input_ids, token_type_ids, position_ids, train
         )
@@ -339,22 +349,22 @@ class BertForSequenceClassification(nnx.Module):
     def __call__(
         self,
         input_ids: jnp.ndarray,
-        token_type_ids: jnp.ndarray,
         attention_mask: jnp.ndarray,
-        position_ids: jnp.ndarray,
+        token_type_ids: jnp.ndarray | None = None,
+        position_ids: jnp.ndarray | None = None,
         train=False,
     ):
         """Forward pass of the sequence classification model.
 
         Args:
             input_ids: Input token IDs.
-            token_type_ids: Token type IDs.
             attention_mask: Attention mask.
+            token_type_ids: Token type IDs.
             position_ids: Position IDs.
             train: Whether the model is in training mode. Defaults to False.
         """
         _, pooled_output = self.bert(
-            input_ids, token_type_ids, attention_mask, position_ids, train
+            input_ids, attention_mask, token_type_ids, position_ids, train
         )
         logits = self.classifier(pooled_output)
         return logits
@@ -381,22 +391,22 @@ class BertForTokenClassification(nnx.Module):
     def __call__(
         self,
         input_ids: jnp.ndarray,
-        token_type_ids: jnp.ndarray,
         attention_mask: jnp.ndarray,
-        position_ids: jnp.ndarray,
+        token_type_ids: jnp.ndarray | None = None,
+        position_ids: jnp.ndarray | None = None,
         train=False,
     ):
         """Forward pass of the token classification model.
 
         Args:
             input_ids: Input token IDs.
-            token_type_ids: Token type IDs.
             attention_mask: Attention mask.
+            token_type_ids: Token type IDs.
             position_ids: Position IDs.
             train: Whether the model is in training mode. Defaults to False.
         """
         sequence_output, _ = self.bert(
-            input_ids, token_type_ids, attention_mask, position_ids, train
+            input_ids, attention_mask, token_type_ids, position_ids, train
         )
         logits = self.classifier(sequence_output)
         return logits
@@ -423,22 +433,22 @@ class BertForQuestionAnswering(nnx.Module):
     def __call__(
         self,
         input_ids: jnp.ndarray,
-        token_type_ids: jnp.ndarray,
         attention_mask: jnp.ndarray,
-        position_ids: jnp.ndarray,
+        token_type_ids: jnp.ndarray | None = None,
+        position_ids: jnp.ndarray | None = None,
         train=False,
     ):
         """Forward pass of the question answering model.
 
         Args:
             input_ids: Input token IDs.
+            attention_mask: Attention Mask.
             token_type_ids: Token type IDs.
-            attention_mask: Attention mask.
             position_ids: Position IDs.
             train: Whether the model is in training mode. Defaults to False.
         """
         sequence_output, _ = self.bert(
-            input_ids, token_type_ids, attention_mask, position_ids, train
+            input_ids, attention_mask, token_type_ids, position_ids, train
         )
         logits = self.qa_outputs(sequence_output)
         start_logits, end_logits = jnp.split(logits, 2, axis=-1)
@@ -448,6 +458,7 @@ class BertForQuestionAnswering(nnx.Module):
 
 
 if __name__ == "__main__":
+    patch_datasets_warning()
     dataset = dummy_sequence_classification_dataset()
     config = BertConfig()
     model = BertForSequenceClassification(
