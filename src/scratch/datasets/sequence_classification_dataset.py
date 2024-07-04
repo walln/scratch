@@ -22,9 +22,9 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from datasets import IterableDataset, load_dataset
-from transformers import BertTokenizer
 
 from scratch.datasets.dataset import create_dataset
+from scratch.datasets.utils import TokenizerMetadata, load_tokenizer
 
 
 class SequenceClassificationBatch(TypedDict):
@@ -43,9 +43,10 @@ class SequenceClassificationDatasetMetadata:
     """Metadata for sequence classification datasets."""
 
     num_classes: int
-    input_shape: tuple[int]
+    max_sequence_length: int
     name: str
     vocab_size: int
+    tokenizer_metadata: TokenizerMetadata
 
 
 def load_hf_dataset(
@@ -89,13 +90,13 @@ def load_hf_dataset(
     if validate:
         data = data.filter(validate).with_format("torch")
 
-    if prepare:
-        data = data.map(prepare).with_format("torch")
-
     def tokenize_function(examples):
         return tokenizer(examples["text"], padding="max_length", truncation=True)
 
-    data = data.map(tokenize_function, batched=True)
+    data = data.map(tokenize_function, batched=True).with_format("torch")
+
+    if prepare:
+        data = data.map(prepare).with_format("torch")
 
     return data.with_format("torch")
 
@@ -107,6 +108,7 @@ def dummy_sequence_classification_dataset(
     num_classes=2,
     sequence_length=128,
     vocab_size=100,
+    tokenizer_name: str = "bert-base-uncased",
 ):
     """Create a dummy sequence classification dataset.
 
@@ -117,12 +119,15 @@ def dummy_sequence_classification_dataset(
         num_classes: the number of classes
         sequence_length: the length of the sequences
         vocab_size: the size of the vocabulary
+        tokenizer_name: the name of the tokenizer to use
     """
+    tokenizer = load_tokenizer(tokenizer_name)
     metadata = SequenceClassificationDatasetMetadata(
         num_classes=num_classes,
-        input_shape=(sequence_length,),
+        max_sequence_length=sequence_length,
         name="dummy",
         vocab_size=vocab_size,
+        tokenizer_metadata=TokenizerMetadata.from_tokenizer(tokenizer, sequence_length),
     )
 
     def gen():
@@ -169,16 +174,22 @@ def dummy_sequence_classification_dataset(
     )
 
 
-def imdb_dataset(batch_size=32, shuffle=True, tokenizer=None):
+def imdb_dataset(
+    batch_size=32,
+    shuffle=True,
+    tokenizer_name: str = "bert-base-uncased",
+    max_length=128,
+):
     """Load the IMDb dataset and return a Dataset object.
 
     Args:
         batch_size: the batch size
         shuffle: whether to shuffle the dataset
-        tokenizer: the tokenizer to use for the dataset. If None, the default
-                   BERT tokenizer will be used.
+        tokenizer_name: the tokenizer to use for the dataset. If None, the default
+                        BERT tokenizer will be used.
+        max_length: the maximum length of the sequences
     """
-    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    tokenizer = load_tokenizer(tokenizer_name, max_length=max_length)
 
     def prepare(sample):
         input_ids, labels = (
@@ -187,6 +198,8 @@ def imdb_dataset(batch_size=32, shuffle=True, tokenizer=None):
         )
         input_ids = torch.tensor(input_ids, dtype=torch.int64)
         labels = torch.tensor(labels, dtype=torch.int64)
+        labels = F.one_hot(labels, num_classes=2).to(torch.int32)
+
         (
             sample["input_ids"],
             sample["label"],
@@ -206,7 +219,11 @@ def imdb_dataset(batch_size=32, shuffle=True, tokenizer=None):
     )
 
     metadata = SequenceClassificationDatasetMetadata(
-        num_classes=2, input_shape=(128,), name="imdb", vocab_size=len(tokenizer)
+        num_classes=2,
+        max_sequence_length=max_length,
+        name="imdb",
+        vocab_size=len(tokenizer),
+        tokenizer_metadata=TokenizerMetadata.from_tokenizer(tokenizer, max_length),
     )
 
     def transform(batch: SequenceClassificationBatch):

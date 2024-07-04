@@ -18,6 +18,7 @@ import torch
 from datasets import IterableDataset
 
 from scratch.datasets.dataset import create_dataset
+from scratch.datasets.utils import TokenizerMetadata, load_tokenizer
 
 
 @dataclass
@@ -28,6 +29,7 @@ class TokenClassificationMetadata:
     sequence_length: int
     vocab_size: int
     name: str
+    tokenizer_metadata: TokenizerMetadata
 
 
 class TokenClassificationBatch(TypedDict):
@@ -44,24 +46,27 @@ def dummy_token_classification_dataset(
     sequence_length=64,
     vocab_size=30522,
     num_labels=5,
+    tokenizer_name: str = "bert-base-uncased",
     shuffle=True,
 ):
     """Create a dummy token classification dataset.
 
     Args:
-    ----
         batch_size: the batch size
         num_samples: the number of samples in the dataset
         sequence_length: the length of the sequences
         vocab_size: the size of the vocabulary
         num_labels: the number of labels
+        tokenizer_name: the name of the tokenizer to use
         shuffle: whether to shuffle the dataset
     """
+    tokenizer = load_tokenizer(tokenizer_name)
     metadata = TokenClassificationMetadata(
         num_labels=num_labels,
         sequence_length=sequence_length,
         name="dummy",
         vocab_size=vocab_size,
+        tokenizer_metadata=TokenizerMetadata.from_tokenizer(tokenizer, sequence_length),
     )
 
     def gen():
