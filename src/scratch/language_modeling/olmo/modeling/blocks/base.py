@@ -1,101 +1,125 @@
 """Base OLMo transformer block."""
 
-import torch
-import torch.nn.functional as F
-from torch import nn
+import jax.numpy as jnp
+from flax import nnx
 
 from scratch.language_modeling.olmo.modeling.activations import SwiGLU
-from scratch.language_modeling.olmo.modeling.buffer_cache import BufferCache
 from scratch.language_modeling.olmo.modeling.config import OLMoConfig
-from scratch.language_modeling.olmo.modeling.initializations import (
-    ModuleType,
-    init_weights,
+from scratch.language_modeling.olmo.modeling.rotary_embedding import (
+    apply_rotary_pos_emb,
+    sine_table,
 )
-from scratch.language_modeling.olmo.modeling.rotary_embedding import RotaryEmbedding
 
 
-class OLMoBlock(nn.Module):
+def spda(
+    q: jnp.ndarray,
+    k: jnp.ndarray,
+    v: jnp.ndarray,
+    mask: jnp.ndarray | None = None,
+    dropout: float = 0.0,
+    is_causal=False,
+    deterministic=False,
+) -> tuple[jnp.ndarray, jnp.ndarray]:
+    """Calculate the scaled dot-product attention with causal masking and dropout.
+
+    Args:
+        q: Query tensor of shape (..., seq_len_q, depth).
+        k: Key tensor of shape (..., seq_len_k, depth).
+        v: Value tensor of shape (..., seq_len_v, depth_v).
+        mask: Float tensor of shape (..., seq_len_q, seq_len_k). Optional.
+        is_causal: Whether to apply causal masking. Default is False.
+        dropout: Dropout rate to apply to the attention weights. Default is 0.0.
+        deterministic: Whether to apply dropout deterministically. Default is False.
+
+    Returns:
+        Output tensor of shape (..., seq_len_q, depth_v).
+        Attention weights tensor of shape (..., seq_len_q, seq_len_k).
+    """
+    matmul_qk = jnp.einsum("...ij,...kj->...ik", q, k)
+
+    # Scale matmul_qk
+    depth = q.shape[-1]
+    logits = matmul_qk / jnp.sqrt(depth)
+
+    # Apply causal mask
+    if is_causal:
+        seq_len_q, seq_len_k = q.shape[-2], k.shape[-2]
+        causal_mask = jnp.tril(jnp.ones((seq_len_q, seq_len_k), dtype=jnp.float32))
+        logits = jnp.where(causal_mask == 0, -1e9, logits)
+
+    # Add the mask to the scaled tensor.
+    if mask is not None:
+        logits += mask * -1e9
+
+    # Softmax is normalized on the last axis (seq_len_k) so that the scores add up to 1.
+    attention_weights = nnx.softmax(logits, axis=-1)
+
+    # Apply dropout
+    if dropout > 0.0:
+        attention_weights = nnx.Dropout(rate=dropout, deterministic=deterministic)(
+            attention_weights
+        )
+
+    output = jnp.einsum("...ij,...jk->...ik", attention_weights, v)
+
+    return output, attention_weights
+
+
+class Block(nnx.Module):
     """Base OLMo transformer block."""
 
-    def __init__(self, layer_id: int, config: OLMoConfig, cache: BufferCache):
+    q_norm: nnx.LayerNorm | None
+    k_norm: nnx.LayerNorm | None
+
+    def __init__(self, layer_id: int, config: OLMoConfig, *, rngs: nnx.Rngs):
         """Initialize the OLMo block.
 
         Args:
             layer_id: the ID of the layer
             config: the model configuration
-            cache: the buffer cache
+            rngs: the random number generators
         """
-        super().__init__()
         self.layer_id = layer_id
         self.config = config
-        self.hidden_size = config.mlp_ratio * config.d_model
+        self.hidden_size = config.max_sequence_length * 3
+        self.activation_multiplier = 0.5  # SwiGLU activation multiplier
+        self.q_norm = None
+        self.k_norm = None
 
         # Ensure the model dimensions are valid
         assert config.d_model % config.n_heads == 0
 
-        self.dropout = nn.Dropout(config.residual_dropout)
+        self.dropout = nnx.Dropout(config.residual_dropout, rngs=rngs)
 
         # Make sure QKV clip coefficient is positive, otherwise it's not well-defined.
         if config.clip_qkv is not None:
             assert config.clip_qkv > 0
 
         self.activation = SwiGLU()
-        assert (self.activation.output_multiplier * self.hidden_size) % 1 == 0
+        assert (self.activation_multiplier * self.hidden_size) % 1 == 0
 
         # Compute attention projections
-        self.attention_out = nn.Linear(
-            config.d_model,
-            config.d_model,
-            bias=config.include_bias,
-            device=config.init_device,
+        self.attention_out = nnx.Linear(
+            config.d_model, config.d_model, use_bias=config.include_bias, rngs=rngs
         )
 
         # Feed-forward network
-        self.ff_out = nn.Linear(
-            int(self.act.output_multiplier * self.hidden_size),
+        self.ff_out = nnx.Linear(
+            int(self.activation_multiplier * self.hidden_size),
             config.d_model,
-            bias=config.include_bias,
-            device=config.init_device,
-        )
-        self.ff_out._is_residual = True  # type: ignore
-
-        if config.use_rope:
-            self.rotary_embedding = RotaryEmbedding(config, cache)
-
-    def reset_parameters(self):
-        """Reset the parameters of the model.
-
-        This includes the attention and feedforward projections, as well as the
-        layer norms.
-        """
-        if self.k_norm is not None:
-            self.k_norm.reset_parameters()
-        if self.q_norm is not None:
-            self.q_norm.reset_parameters()
-        init_weights(
-            self.config,
-            self.attn_out,
-            d=self.config.d_model,
-            layer_id=self.layer_id,
-            type_of_module=ModuleType.out_module,
-        )
-        init_weights(
-            self.config,
-            self.ff_out,
-            d=self.ff_out.in_features,
-            layer_id=self.layer_id,
-            type_of_module=ModuleType.out_module,
+            use_bias=config.include_bias,
+            rngs=rngs,
         )
 
     def _scaled_dot_product_attention(
         self,
-        q: torch.Tensor,
-        k: torch.Tensor,
-        v: torch.Tensor,
-        attention_mask: torch.Tensor | None = None,
+        q: jnp.ndarray,
+        k: jnp.ndarray,
+        v: jnp.ndarray,
+        attention_mask: jnp.ndarray | None = None,
         dropout: float = 0.0,
         is_causal=False,
-    ) -> torch.Tensor:
+    ) -> jnp.ndarray:
         """Computes scaled dot-product attention.
 
         Args:
@@ -106,108 +130,99 @@ class OLMoBlock(nn.Module):
             dropout: the dropout rate
             is_causal: whether the attention is causal
         """
-        # torch's sdpa doesn't support GQA, so we're doing this
-        assert k.size(1) == v.size(1)
-        num_kv_heads = k.size(1)
-        num_q_heads = q.size(1)
+        # jax's sdpa doesn't support GQA, so we're doing this
+        assert k.shape[1] == v.shape[1]
+        num_kv_heads = k.shape[1]
+        num_q_heads = q.shape[1]
         if num_q_heads != num_kv_heads:
             assert num_q_heads % num_kv_heads == 0
-            k = k.repeat_interleave(
-                num_q_heads // num_kv_heads, dim=1, output_size=num_q_heads
-            )
-            v = v.repeat_interleave(
-                num_q_heads // num_kv_heads, dim=1, output_size=num_q_heads
-            )
+            k = k.repeat(num_q_heads // num_kv_heads, axis=1)
+            v = v.repeat(num_q_heads // num_kv_heads, axis=1)
 
-        return F.scaled_dot_product_attention(
+        output, attention_weights = spda(
             q,
             k,
             v,
-            attn_mask=attention_mask,
-            dropout_p=dropout,
+            mask=attention_mask,
+            dropout=dropout,
             is_causal=is_causal,
         )
 
+        return output
+
     def attention(
         self,
-        q: torch.Tensor,
-        k: torch.Tensor,
-        v: torch.Tensor,
-        attention_bias: torch.Tensor | None = None,
-        layer_past: tuple[torch.Tensor, torch.Tensor] | None = None,
-        use_cache=False,
-    ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor] | None]:
-        """Compute attention scores.
+        q: jnp.ndarray,
+        k: jnp.ndarray,
+        v: jnp.ndarray,
+        attention_bias: jnp.ndarray | None = None,
+        layer_past: tuple[jnp.ndarray, jnp.ndarray] | None = None,
+        training=False,
+    ) -> jnp.ndarray:
+        """Compute the attention mechanism.
 
         Args:
-            q: the query tensor
-            k: the key tensor
-            v: the value tensor
-            attention_bias: the attention bias tensor
-            layer_past: the past layer
-            use_cache: whether to use cache
+            q: The query tensor.
+            k: The key tensor.
+            v: The value tensor.
+            attention_bias: The attention bias tensor.
+            layer_past: The past layer tensor.
+            training: Whether the model is in training mode.
+
+        Returns:
+            The output tensor.
         """
-        B, T, C = q.size()  # batch size, sequence length, d_model
+        B, T, C = q.shape
         dtype = k.dtype
 
         # apply layer norm if needed
         if self.q_norm is not None and self.k_norm is not None:
-            q = self.q_norm(q).to(dtype=dtype)
-            k = self.k_norm(k).to(dtype=dtype)
+            q = self.q_norm(q).astype(dtype)
+            k = self.k_norm(k).astype(dtype)
+
+        print(f"Q shape: {q.shape}")
+        print(f"K shape: {k.shape}")
+        print(f"V shape: {v.shape}")
 
         # Move head forward to be next to the batch dim.
         # shape: (B, nh, T, hs)
-        q = q.view(B, T, self.config.n_heads, C // self.config.n_heads).transpose(1, 2)
+        q = q.reshape(B, T, self.config.n_heads, C // self.config.n_heads).transpose(
+            0, 2, 1, 3
+        )
         # shape: (B, n_kv_h, T, hs)
-        k = k.view(
+        k = k.reshape(
             B, T, self.config.effective_n_kv_heads, C // self.config.n_heads
-        ).transpose(1, 2)
+        ).transpose(0, 2, 1, 3)
         # shape: (B, n_kv_h, T, hs)
-        v = v.view(
+        v = v.reshape(
             B, T, self.config.effective_n_kv_heads, C // self.config.n_heads
-        ).transpose(1, 2)
+        ).transpose(0, 2, 1, 3)
+
+        print(f"Attention: q.shape: {q.shape}")
+        print(f"Attention: k.shape: {k.shape}")
+        print(f"Attention: v.shape: {v.shape}")
 
         if layer_past is not None:
             past_key, past_value = layer_past
-            k = torch.cat((past_key, k), dim=-2)
-            v = torch.cat((past_value, v), dim=-2)
-
-        present = (k, v) if use_cache else None
-        query_len, key_len = q.shape[-2], k.shape[-2]
+            k = jnp.concatenate((past_key, k), axis=-2)
+            v = jnp.concatenate((past_value, v), axis=-2)
 
         if self.config.use_rope:
             # Apply rotary embeddings
-            q, k = self.rotary_embedding(q, k)
+            sin, cos = sine_table(q.shape[-1], max(q.shape[1], k.shape[1]))
+            q, k = apply_rotary_pos_emb(q, k, sin, cos)
 
-        if attention_bias is not None:
-            # resize/cast attention bias - this is and AMP issue
-            attention_bias = self._cast_attn_bias(
-                attention_bias[:, :, key_len - query_len : key_len, :key_len], dtype
-            )
-
-        # Compute attention scores
-        # shape: (B, nh, T, hs)
         attention = self._scaled_dot_product_attention(
             q,
             k,
             v,
             attention_mask=attention_bias,
-            dropout=0.0 if not self.training else self.config.attention_dropout,
+            dropout=0.0 if not training else self.config.attention_dropout,
             is_causal=attention_bias is None,
         )
 
         # put the outputs of the heads together again
-        attention = attention.transpose(1, 2).contiguous().view(B, T, C)
+        attention = attention.transpose(0, 2, 1, 3).reshape(B, T, C)
 
         # Output projection
-        return self.attention_out(attention), present
-
-    def forward(
-        self,
-        x: torch.Tensor,
-        attention_bias: torch.Tensor | None = None,
-        layer_past: tuple[torch.Tensor, torch.Tensor] | None = None,
-        use_cache=False,
-    ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor] | None]:
-        """Forward pass through the OLMo block."""
-        raise NotImplementedError()
+        return self.attention_out(attention)
