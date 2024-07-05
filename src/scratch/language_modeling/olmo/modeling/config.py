@@ -62,9 +62,6 @@ class OLMoConfig:
     weight_tying: bool = True
     scale_logits: bool = False
 
-    # Runtime
-    init_device: str = "meta"
-
     @property
     def effective_n_kv_heads(self) -> int:
         """Return the effective number of key-value heads.

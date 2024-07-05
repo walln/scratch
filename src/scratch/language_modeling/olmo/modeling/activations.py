@@ -1,25 +1,27 @@
 """Activation functions."""
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
+import jax
+import jax.numpy as jnp
+from flax import nnx
 
 
-class SwiGLU(nn.Module):
+class SwiGLU(nnx.Module):
     """SwiGLU activation function.
 
-    SwiGLU activation function is defined as:
-     x * sigmoid(beta * x) + (1 - sigmoid(beta * x)) * (Wx + b)
+    SwiGLU activation function is a Swish Gate Linear Unit activation function
+    that is a combination of Swish and GLU activation functions.
 
     This linear gating function is smoother than ReLU and is non-monotonic.
     """
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Apply SwiGLU activation function."""
-        x, gate = x.chunk(2, dim=-1)
-        return F.silu(gate) * x
+    def __call__(self, x: jnp.ndarray) -> jnp.ndarray:
+        """Apply SwiGLU activation function.
 
-    @property
-    def output_multiplier(self) -> float:
-        """Return the output multiplier for the activation function."""
-        return 0.5
+        Args:
+            x: Input tensor.
+
+        Returns:
+            Output tensor.
+        """
+        x, gate = jnp.split(x, 2, axis=-1)
+        return jax.nn.silu(gate) * x

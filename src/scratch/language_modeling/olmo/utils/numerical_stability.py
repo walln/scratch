@@ -1,10 +1,10 @@
 """Utility functions for numerical stability."""
 
-import torch
+import jax.numpy as jnp
 
 
 def ensure_finite(
-    x: torch.Tensor, *, check_neg_inf: bool = True, check_pos_inf: bool = False
+    x: jnp.ndarray, *, check_neg_inf: bool = True, check_pos_inf: bool = False
 ):
     """Ensure that x is finite.
 
@@ -20,7 +20,12 @@ def ensure_finite(
     Returns:
       The input tensor with the infinite values replaced.
     """
+
+    def replace_inf(x, value) -> jnp.ndarray:
+        return jnp.where(jnp.isinf(x), value, x)
+
     if check_neg_inf:
-        x.masked_fill_(x == float("-inf"), torch.finfo(x.dtype).min)
+        x = replace_inf(x, jnp.finfo(x.dtype).min)
     if check_pos_inf:
-        x.masked_fill_(x == float("inf"), torch.finfo(x.dtype).max)
+        x = replace_inf(x, jnp.finfo(x.dtype).max)
+    return x
