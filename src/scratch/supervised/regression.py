@@ -1,444 +1,495 @@
 """Regression models for supervised learning."""
 
-import math
+from collections.abc import Callable
 from enum import Enum
+from functools import partial
 from typing import Literal
 
-import numpy as np
-from scratch.activation_functions.sigmoid import Sigmoid
-from scratch.utils.data import diagonalize
-
-
-class L1_Regularization:
-    """Regularization for Lasso Regression."""
-
-    def __init__(self, alpha):
-        """Initialize regularization parameter.
-
-        Args:
-        ----
-            alpha: regularization strength
-        """
-        self.alpha = alpha
-
-    def __call__(self, w):
-        """Calculate regularization term.
-
-        Args:
-        ----
-            w: weights
-        """
-        return self.alpha * np.linalg.norm(w, 1)
-
-    def grad(self, w):
-        """Calculate gradient of regularization term.
-
-        Args:
-        ----
-            w: weights
-        """
-        return self.alpha * np.sign(w)
-
-
-class L2_Regularization:
-    """Regularization for Ridge Regression."""
-
-    def __init__(self, alpha):
-        """Initialize regularization parameter.
-
-        Args:
-        ----
-            alpha: regularization strength
-        """
-        self.alpha = alpha
-
-    def __call__(self, w):
-        """Calculate regularization term.
-
-        Args:
-        ----
-        w: weights
-        """
-        return self.alpha * 0.5 * w.T.dot(w)
-
-    def grad(self, w):
-        """Calculate gradient of regularization term.
-
-        Args:
-        ----
-            w: weights
-        """
-        return self.alpha * w
-
-
-class Elastic_Regularization:
-    """Regularization for Elastic Net using combined L1 and L2 regularization."""
-
-    def __init__(self, alpha, l1_ratio=0.5):
-        """Initialize regularization parameter.
-
-        Args:
-        ----
-            alpha: regularization strength
-            l1_ratio: ratio of L1 regularization
-        """
-        self.alpha = alpha
-        self.l1_ratio = l1_ratio
-
-    def __call__(self, w):
-        """Calculate regularization term.
-
-        Args:
-        ----
-        w: weights
-        """
-        l1_contr = self.l1_ratio * np.linalg.norm(w, 1)
-        l2_contr = (1 - self.l1_ratio) * 0.5 * w.T.dot(w)
-        return self.alpha * (l1_contr + l2_contr)
-
-    def grad(self, w):
-        """Calculate gradient of regularization term.
-
-        Args:
-        ----
-        w: weights
-        """
-        l1_contr = self.l1_ratio * np.sign(w)
-        l2_contr = (1 - self.l1_ratio) * w
-        return self.alpha * (l1_contr + l2_contr)
+import jax
+import jax.numpy as jnp
 
 
 class OptimizationMethod(str, Enum):
-    """Optimization methods for training regression models."""
+    """Optimization methods for regression.
+
+    The optimization methods available are:
+        - gradient_descent: The gradient descent algorithm.
+        - least_squares: The least squares method.
+    """
 
     gradient_descent = "gradient_descent"
     least_squares = "least_squares"
 
 
-class Regression:
-    """Base regression model that fits a relationship between scalars X and Y.
+def l1_regularization(w: jnp.ndarray, alpha: float) -> jnp.ndarray:
+    """The L1 regularization function.
+
+    The L1 regularization function is defined as:
+
+            f(w) = alpha * ||w||_1
 
     Args:
-    ----
-    n_iterations: float
-        The number of training iterations the algorithm will take to attempt to
-        optimize the model.
-    learning_rate: float
-        The rate of change of the model parameters at each iteration.
+        w: The weights of the model.
+        alpha: The regularization factor.
+
+    Returns:
+        The L1 regularization value.
     """
-
-    def __init__(self, n_iterations, learning_rate):
-        """Initialize model parameters.
-
-        Args:
-        ----
-            n_iterations: number of training iterations
-            learning_rate: step length for updating model parameters
-        """
-        self.n_iterations = n_iterations
-        self.learning_rate = learning_rate
-        self.regularization = lambda x: 0
-        self.regularization.grad = lambda x: 0
-
-    def init_weights(self, n_features):
-        """Randomly initialize the model weights between [-1/N, 1/N].
-
-        Args:
-        ----
-        n_features: number of features
-        """
-        lim = 1 / math.sqrt(n_features)
-        self.w = np.random.uniform(-lim, lim, (n_features,))
-
-    def fit(self, X, y):
-        """Fit the model to the training data.
-
-        Args:
-        ----
-            X: training data
-            y: target values
-        """
-        # Add static bias term
-        X = np.insert(X, 0, 1, axis=1)
-        self.init_weights(n_features=X.shape[1])
-        self.training_errors = []
-
-        for _ in range(self.n_iterations):
-            y_pred = X.dot(self.w)
-            # Calculate l2 loss
-            mse = np.mean(0.5 * (y - y_pred) ** 2 + self.regularization(self.w))
-            self.training_errors.append(mse)
-            # Calculate the gradient of the l2 loss with respect to w
-            grad_w = -(y - y_pred).dot(X) + self.regularization.grad(self.w)
-            # Update the parameters of the weights
-            self.w -= self.learning_rate * grad_w
-
-    def predict(self, X):
-        """Predict target values for the given data.
-
-        Args:
-        ----
-            X: data to predict target values for
-        """
-        # Insert constant ones for bias weights
-        X = np.insert(X, 0, 1, axis=1)
-        y_pred = X.dot(self.w)
-        return y_pred
+    return alpha * jnp.linalg.norm(w, 1)
 
 
-class LinearRegression(Regression):
-    """Linear model that fits a relationship between scalars X and Y.
+def l2_regularization(w: jnp.ndarray, alpha: float) -> jnp.ndarray:
+    """The L2 regularization function.
+
+    The L2 regularization function is defined as:
+
+            f(w) = alpha * 0.5 * w.T.dot(w)
 
     Args:
-    ----
-    n_iterations: float
-        The number of training iterations the algorithm will take to attempt to
-        optimize the model.
-    learning_rate: float
-        The rate of change of the model parameters at each iteration.
-    optimization: OptimizationMethod
-        The optimization method to use when training the model. Either gradient
-        descent or least squares.
+        w: The weights of the model.
+        alpha: The regularization factor.
+
+    Returns:
+        The L2 regularization value.
     """
-
-    def __init__(
-        self,
-        n_iterations=1000,
-        learning_rate=0.001,
-        optimization=OptimizationMethod.least_squares,
-    ):
-        """Initialize model parameters.
-
-        Args:
-        ----
-            n_iterations: number of training iterations
-            learning_rate: step length for updating model parameters
-            optimization: optimization method
-        """
-        self.optimization = optimization
-        # No regularization
-        self.regularization = lambda x: 0
-        self.regularization.grad = lambda x: 0
-        super().__init__(n_iterations=n_iterations, learning_rate=learning_rate)
-
-    def fit(self, X, y):
-        """Fit the model to the training data.
-
-        Args:
-        ----
-            X: training data
-        y: target values
-        """
-        if self.optimization == OptimizationMethod.least_squares:
-            # Add static bias term
-            X = np.insert(X, 0, 1, axis=1)
-            # Calculate weights by least squares
-            # https://en.wikipedia.org/wiki/Moore%E2%80%93Penrose_inverse
-            U, S, V = np.linalg.svd(X.T.dot(X))
-            inv = V.dot(np.linalg.pinv(np.diag(S))).dot(U.T)
-            self.w = inv.dot(X.T).dot(y)
-        else:
-            super().fit(X, y)
+    return alpha * 0.5 * jnp.dot(w, w)
 
 
-class LassoRegression(Regression):
-    """Linear regression model with regularization.
+def elastic_regularization(
+    w: jnp.ndarray, alpha: float, l1_ratio: float = 0.5
+) -> jnp.ndarray:
+    """The elastic net regularization function.
 
-    This model tries to balance the fit of
-    the model with respect to the training data and the complexity of the model using
-    l1 regularization.
+    The elastic net regularization function is defined as:
+
+            f(w) = alpha * (l1_ratio * ||w||_1 + (1 - l1_ratio) * 0.5 * w.T.dot(w))
 
     Args:
-    ----
-    learning_rate: The step length that will be used when updating the weights.
-    n_iterations: The number of training iterations the algorithm will take to attempt
-        to optimize the model.
-    reg_factor: The amount of regularization and feature shrinkage.
+        w: The weights of the model.
+        alpha: The regularization factor.
+        l1_ratio: The ratio of L1 regularization in the model.
+
+    Returns:
+        The elastic net regularization value.
     """
-
-    def __init__(self, learning_rate=0.001, n_iterations=1000, reg_factor=0.5):
-        """Initialize model parameters.
-
-        Args:
-        ----
-            n_iterations: number of training iterations
-            learning_rate: step length for updating model parameters
-            reg_factor: regularization strength
-        """
-        self.regularization = L1_Regularization(alpha=reg_factor)
-        super().__init__(n_iterations, learning_rate)
-
-    def fit(self, X, y):
-        """Fit the model to the training data.
-
-        Args:
-        ----
-            X: training data
-        y: target values
-        """
-        super().fit(X, y)
-
-    def predict(self, X):
-        """Predict target values for the given data.
-
-        Args:
-        ----
-        X: data to predict target values for
-        """
-        return super().predict(X)
+    l1_contr = l1_ratio * jnp.linalg.norm(w, 1)
+    l2_contr = (1 - l1_ratio) * 0.5 * w.T.dot(w)
+    return alpha * (l1_contr + l2_contr)
 
 
-class RidgeRegression(Regression):
-    """Linear regression model with regularization.
+def l1_grad(w: jnp.ndarray, alpha: float) -> jnp.ndarray:
+    """The gradient of the L1 regularization function.
 
-    This model tries to balance the fit
-    of the model with respect to the training data and the complexity of the model
-    using l2 regularization.
+    The L1 regularization function is defined as:
+
+            f(w) = alpha * ||w||_1
 
     Args:
-    ----
-    learning_rate: The step length that will be used when updating the weights.
-    n_iterations: The number of training iterations the algorithm will take to attempt
-        to optimize the model.
-    reg_factor: The amount of regularization and feature shrinkage.
+        w: The weights of the model.
+        alpha: The regularization factor.
+
+    Returns:
+        The gradient of the L1 regularization function.
     """
-
-    def __init__(self, learning_rate=0.001, n_iterations=1000, reg_factor=0.5):
-        """Initialize model parameters.
-
-        Args:
-        ----
-            n_iterations: number of training iterations
-            learning_rate: step length for updating model parameters
-            reg_factor: regularization strength
-        """
-        self.regularization = L2_Regularization(alpha=reg_factor)
-        super().__init__(n_iterations, learning_rate)
+    return alpha * jnp.sign(w)
 
 
-class ElasticNet(Regression):
-    """Regression using both L1 and L2 regularization.
+def l2_grad(w: jnp.ndarray, alpha: float) -> jnp.ndarray:
+    """The gradient of the L2 regularization function.
+
+    The L2 regularization function is defined as:
+
+                f(w) = alpha * w
 
     Args:
-    ----------
-    learning_rate: The step length that will be used when updating the weights
-    n_iterations: The number of training iterations the algorithm will take to attempt
-        to optimize the model.
-    reg_factor: The amount of regularization and feature shrinkage
-    l1_ratio: The contribution of L1 regularization in the combined regularization term
+        w: The weights of the model.
+        alpha: The regularization factor.
+
+    Returns:
+        The gradient of the L2 regularization function.
     """
-
-    def __init__(
-        self, learning_rate=0.001, n_iterations=1000, reg_factor=0.05, l1_ratio=0.5
-    ):
-        """Initialize model parameters.
-
-        Args:
-        ----
-            n_iterations: number of training iterations
-            learning_rate: step length for updating model parameters
-            reg_factor: regularization strength
-            l1_ratio: ratio of L1 regularization
-        """
-        self.regularization = Elastic_Regularization(
-            alpha=reg_factor, l1_ratio=l1_ratio
-        )
-
-        super().__init__(n_iterations, learning_rate)
-
-    def fit(self, X, y):
-        """Fit the model to the training data.
-
-        Args:
-        ----
-            X: training data
-            y: target values
-        """
-        # X = normalize(polynomial_features(X, degree=self.degree))
-        super().fit(X, y)
-
-    def predict(self, X):
-        """Predict target values for the given data.
-
-        Args:
-        ----
-            X: data to predict target values for
-        """
-        # X = normalize(polynomial_features(X, degree=self.degree))
-        return super().predict(X)
+    return alpha * w
 
 
-class LogisticRegression:
-    """Logistic Regression classifier.
+def elastic_grad(w: jnp.ndarray, alpha: float, l1_ratio: float = 0.5) -> jnp.ndarray:
+    """The gradient of the elastic net regularization function.
 
-    Performs binary classification by estimating
-    probability of an input belonging to a certain class utilizing a sigmoid
-    activation.
+    The elastic net regularization function is defined as:
+
+                f(w) = alpha * (l1_ratio * ||w||_1 + (1 - l1_ratio) * 0.5 * w.T.dot(w))
 
     Args:
-    ----
-    learning_rate: The step length that will be used when updating the weights.
-     n_iterations: The number of training iterations the algorithm will take to
-        attempt to optimize the model.
-    optimization: The optimization method to use when training the model.
-        Either gradient descent or least squares.
+        w: The weights of the model.
+        alpha: The regularization factor.
+        l1_ratio: The ratio of L1 regularization in the model.
+
+    Returns:
+        The gradient of the elastic net regularization function.
     """
+    l1_contr = l1_ratio * jnp.sign(w)
+    l2_contr = (1 - l1_ratio) * w
+    return alpha * (l1_contr + l2_contr)
 
-    def __init__(
-        self,
-        learning_rate=0.001,
-        n_iterations=1000,
-        optimization: Literal["gradient_descent", "least_squares"] = "gradient_descent",
-    ):
-        """Initialize model parameters.
 
-        Args:
-        ----
-            n_iterations: number of training iterations
-            learning_rate: step length for updating model parameters
-            optimization: optimization method
-        """
-        self.params = None
-        self.learning_rate = learning_rate
-        self.n_iterations = n_iterations
-        self.optimization = optimization
-        self.sigmoid = Sigmoid()
+def init_weights(n_features: int, seed: int = 0) -> jnp.ndarray:
+    """Initialize the weights of the model.
 
-    def _initialize_parameters(self, X):
-        n_features = np.shape(X)[1]
-        # Initial parameters should be uniformly distributed between
-        # [-1/sqrt(N), 1/sqrt(N)]
-        lim = 1 / math.sqrt(n_features)
-        self.params = np.random.uniform(-lim, lim, (n_features,))
+    The weights are initialized using a uniform distribution with a range of
+    [-lim, lim], where lim is calculated as 1 / sqrt(n_features).
 
-    def fit(self, X, y):
-        """Fit the model to the training data.
+    Args:
+        n_features: The number of features.
+        seed: The random seed.
 
-        Args:
-        ----
-            X: training data
-            y: target values
-        """
-        self._initialize_parameters(X)
-        for _ in range(self.n_iterations):
-            y_pred = self.sigmoid(X.dot(self.params))
-            if self.optimization == "gradient_descent":
-                # Update parameters opposite to the direction of the loss gradient
-                self.params -= self.learning_rate * -(y - y_pred).dot(X)
-            elif self.optimization == "least_squares":
-                # Diagonal of the activation gradient
-                diag_gradient = diagonalize(self.sigmoid.gradient(X.dot(self.params)))
-                self.params = (
-                    np.linalg.pinv(X.T.dot(diag_gradient).dot(X))
-                    .dot(X.T)
-                    .dot(diag_gradient.dot(X).dot(self.params) + y - y_pred)
-                )
+    Returns:
+        The initialized weights.
+    """
+    lim = 1 / jnp.sqrt(n_features)
+    return jax.random.uniform(
+        jax.random.PRNGKey(seed), shape=(n_features,), minval=-lim, maxval=lim
+    )
 
-    def predict(self, X):
-        """Predict target values for the given data.
 
-        Args:
-        ----
-        X: data to predict target values for
-        """
-        return np.round(self.sigmoid(X.dot(self.params))).astype(int)
+def add_bias(X: jnp.ndarray) -> jnp.ndarray:
+    """Add a bias term to the input features.
+
+    Args:
+        X: The input features.
+
+    Returns:
+        The input features with a bias term.
+    """
+    return jnp.hstack((jnp.ones((X.shape[0], 1)), X))
+
+
+def regression_step(
+    w: jnp.ndarray,
+    X: jnp.ndarray,
+    y: jnp.ndarray,
+    learning_rate: float,
+    regularization: Callable[[jnp.ndarray], jnp.ndarray],
+    regularization_grad: Callable[[jnp.ndarray], jnp.ndarray],
+) -> tuple[jnp.ndarray, jnp.ndarray]:
+    """Perform a single step of regression.
+
+    Args:
+        w: The weights of the model.
+        X: The input features.
+        y: The target labels.
+        learning_rate: The learning rate.
+        regularization: The regularization function.
+        regularization_grad: The gradient of the regularization function.
+
+    Returns:
+        The updated weights and the mean squared error.
+    """
+    y_pred = X.dot(w)
+    mse = jnp.mean(0.5 * (y - y_pred) ** 2 + regularization(w[1:]))
+    grad_w = -X.T.dot(y - y_pred) / X.shape[0]
+    reg_grad = jnp.concatenate([jnp.zeros(1), regularization_grad(w[1:])])
+    grad_w += reg_grad
+    w -= learning_rate * grad_w
+    return w, mse
+
+
+def fit_regression(
+    X: jnp.ndarray,
+    y: jnp.ndarray,
+    n_iterations: int = 1000,
+    learning_rate: float = 0.001,
+    regularization: Callable[[jnp.ndarray], jnp.ndarray] = lambda x: jnp.zeros(0),
+    regularization_grad: Callable[[jnp.ndarray], jnp.ndarray] = lambda x: jnp.zeros(0),
+    optimization: OptimizationMethod = OptimizationMethod.gradient_descent,
+    seed: int = 0,
+) -> tuple[jnp.ndarray, list]:
+    """Fit a regression model.
+
+    Args:
+        X: The input features.
+        y: The target labels.
+        n_iterations: The number of iterations to run.
+        learning_rate: The learning rate.
+        regularization: The regularization function.
+        regularization_grad: The gradient of the regularization function.
+        optimization: The optimization method to use.
+        seed: The random seed.
+
+    Returns:
+        The weights of the model and the training errors.
+    """
+    X = add_bias(X)
+    w = init_weights(X.shape[1], seed)
+    training_errors = []
+
+    if optimization == OptimizationMethod.least_squares:
+        U, S, Vt = jnp.linalg.svd(X, full_matrices=False)
+        S_inv = jnp.diag(1 / S)
+        w = Vt.T.dot(S_inv).dot(U.T).dot(y)
+    else:
+        for _ in range(n_iterations):
+            w, mse = regression_step(
+                w, X, y, learning_rate, regularization, regularization_grad
+            )
+            training_errors.append(mse)
+
+    return w, training_errors
+
+
+def predict(X: jnp.ndarray, w: jnp.ndarray) -> jnp.ndarray:
+    """Predict the target variable using the input features and the model weights.
+
+    Args:
+        X: The input features.
+        w: The weights of the model.
+
+    Returns:
+        The predicted target variable
+    """
+    X = add_bias(X)
+    return X.dot(w)
+
+
+# Specific regression types
+def linear_regression(
+    X: jnp.ndarray,
+    y: jnp.ndarray,
+    n_iterations: int = 1000,
+    learning_rate: float = 0.001,
+    optimization: OptimizationMethod = OptimizationMethod.least_squares,
+    seed: int = 0,
+) -> jnp.ndarray:
+    """Fit a linear regression model.
+
+    Linear regression is a linear model that assumes a linear relationship between the
+    input features and the target variable. The model is trained using the maximum
+    likelihood estimation, which is equivalent to minimizing the mean squared error
+    loss. The weights of the model are updated using the gradient descent algorithm.
+
+    Args:
+        X: The input features.
+        y: The target labels.
+        n_iterations: The number of iterations to run.
+        learning_rate: The learning rate.
+        optimization: The optimization method to use.
+        seed: The random seed.
+
+    Returns:
+        The weights of the model.
+    """
+    return fit_regression(
+        X, y, n_iterations, learning_rate, optimization=optimization, seed=seed
+    )[0]
+
+
+def lasso_regression(
+    X: jnp.ndarray,
+    y: jnp.ndarray,
+    n_iterations: int = 1000,
+    learning_rate: float = 0.01,
+    reg_factor: float = 0.01,
+    seed: int = 0,
+) -> jnp.ndarray:
+    """Fit a lasso regression model.
+
+    Lasso regression is a linear regression model that uses the L1 penalty to
+    regularize the weights of the model. The model is trained using the maximum
+    likelihood estimation, which is equivalent to minimizing the binary cross-entropy
+    loss. The weights of the model are updated using the gradient descent algorithm.
+
+    Args:
+        X: The input features.
+        y: The target labels.
+        n_iterations: The number of iterations to run.
+        learning_rate: The learning rate.
+        reg_factor: The regularization factor.
+        seed: The random seed.
+
+    Returns:
+        The weights of the model.
+    """
+    return fit_regression(
+        X,
+        y,
+        n_iterations,
+        learning_rate,
+        regularization=partial(l1_regularization, alpha=reg_factor),
+        regularization_grad=partial(l1_grad, alpha=reg_factor),
+        seed=seed,
+    )[0]
+
+
+def ridge_regression(
+    X: jnp.ndarray,
+    y: jnp.ndarray,
+    n_iterations: int = 1000,
+    learning_rate: float = 0.01,
+    reg_factor: float = 0.01,
+    seed: int = 0,
+) -> jnp.ndarray:
+    """Fit a ridge regression model.
+
+    Ridge regression is a linear regression model that uses the L2 penalty to
+    regularize the weights of the model. The model is trained using the maximum
+    likelihood estimation, which is equivalent to minimizing the binary cross-entropy
+    loss. The weights of the model are updated using the gradient descent algorithm.
+
+    Args:
+        X: The input features.
+        y: The target labels.
+        n_iterations: The number of iterations to run.
+        learning_rate: The learning rate.
+        reg_factor: The regularization factor.
+        seed: The random seed.
+
+    Returns:
+        The weights of the model.
+    """
+    return fit_regression(
+        X,
+        y,
+        n_iterations,
+        learning_rate,
+        regularization=partial(l2_regularization, alpha=reg_factor),
+        regularization_grad=partial(l2_grad, alpha=reg_factor),
+        seed=seed,
+    )[0]
+
+
+def elastic_net_regression(
+    X: jnp.ndarray,
+    y: jnp.ndarray,
+    n_iterations: int = 1000,
+    learning_rate: float = 0.01,
+    reg_factor: float = 0.01,
+    l1_ratio: float = 0.5,
+    seed: int = 0,
+) -> jnp.ndarray:
+    """Fit an elastic net regression model.
+
+    Elastic net is a linear regression model that combines the L1 and L2 penalties of
+    the Lasso and Ridge regression models. The model is trained using the maximum
+    likelihood estimation, which is equivalent to minimizing the binary cross-entropy
+    loss. The weights of the model are updated using the gradient descent algorithm.
+
+    Args:
+        X: The input features.
+        y: The target labels.
+        n_iterations: The number of iterations to run.
+        learning_rate: The learning rate.
+        reg_factor: The regularization factor.
+        l1_ratio: The ratio of L1 regularization in the model.
+        seed: The random seed.
+
+    Returns:
+        The weights of the model.
+    """
+    return fit_regression(
+        X,
+        y,
+        n_iterations,
+        learning_rate,
+        regularization=partial(
+            elastic_regularization, alpha=reg_factor, l1_ratio=l1_ratio
+        ),
+        regularization_grad=partial(elastic_grad, alpha=reg_factor, l1_ratio=l1_ratio),
+        seed=seed,
+    )[0]
+
+
+def sigmoid(x: jnp.ndarray) -> jnp.ndarray:
+    """The core logistic function or sigmoid operation.
+
+    Args:
+        x: The input value.
+
+    Returns:
+        The output value.
+    """
+    return 1 / (1 + jnp.exp(-x))
+
+
+@jax.jit
+def logistic_regression_step(
+    w: jnp.ndarray,
+    X: jnp.ndarray,
+    y: jnp.ndarray,
+    learning_rate: float,
+) -> jnp.ndarray:
+    """Perform a single step of logistic regression.
+
+    Args:
+        w: The weights of the model.
+        X: The input features.
+        y: The target labels.
+        learning_rate: The learning rate.
+
+    Returns:
+        The updated weights.
+    """
+    y_pred = sigmoid(X.dot(w))
+    grad_w = -(y - y_pred).dot(X)
+    w -= learning_rate * grad_w
+    return w
+
+
+def logistic_regression(
+    X: jnp.ndarray,
+    y: jnp.ndarray,
+    n_iterations: int = 1000,
+    learning_rate: float = 0.001,
+    optimization: Literal["gradient_descent", "least_squares"] = "gradient_descent",
+    seed: int = 0,
+) -> jnp.ndarray:
+    """Fit a logistic regression model.
+
+    Logistic regression is a classification algorithm used to assign observations to a
+    discrete set of classes. It is a linear model that uses the logistic function to
+    model the probability that a given input belongs to a particular class. The logistic
+    function that maps any real-valued number into the range [0, 1] is defined as:
+
+            f(x) = 1 / (1 + e^(-x))
+
+    The model is trained using the maximum likelihood estimation, which is equivalent to
+    minimizing the binary cross-entropy loss. The weights of the model are updated using
+    the gradient descent algorithm.
+
+    Args:
+        X: The input features.
+        y: The target labels.
+        n_iterations: The number of iterations to run.
+        learning_rate: The learning rate.
+        optimization: The optimization method to use.
+        seed: The random seed.
+
+    Returns:
+        The weights of the model.
+    """
+    w = init_weights(X.shape[1], seed)
+
+    if optimization == "gradient_descent":
+        for _ in range(n_iterations):
+            w = logistic_regression_step(w, X, y, learning_rate)
+    elif optimization == "least_squares":
+        for _ in range(n_iterations):
+            y_pred = sigmoid(X.dot(w))
+            diag_gradient = jnp.diag(sigmoid.gradient(X.dot(w)))
+            w = (
+                jnp.linalg.pinv(X.T.dot(diag_gradient).dot(X))
+                .dot(X.T)
+                .dot(diag_gradient.dot(X).dot(w) + y - y_pred)
+            )
+
+    return w
+
+
+def predict_logistic(X: jnp.ndarray, w: jnp.ndarray) -> jnp.ndarray:
+    """Predict the class of each sample in X.
+
+    Args:
+        X: The input features.
+        w: The weights of the model.
+
+    Returns:
+        The predicted class for each sample.
+    """
+    return jnp.round(sigmoid(X.dot(w))).astype(int)
