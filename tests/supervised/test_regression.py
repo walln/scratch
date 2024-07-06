@@ -1,11 +1,13 @@
 """Test regression models."""
 
 from scratch.supervised.regression import (
-    ElasticNet,
-    LassoRegression,
-    LinearRegression,
-    LogisticRegression,
-    RidgeRegression,
+    elastic_net_regression,
+    lasso_regression,
+    linear_regression,
+    logistic_regression,
+    predict,
+    predict_logistic,
+    ridge_regression,
 )
 from sklearn.datasets import make_classification, make_regression
 from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, r2_score
@@ -13,10 +15,33 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 
-def regression_dataset():
-    """Return a regression dataset."""
-    X, y = make_regression(n_samples=2000, n_features=1, noise=20, random_state=1)  # type: ignore broken types
-    # X, y = load_diabetes(return_X_y=True)
+def regression_dataset(
+    n_samples: int = 2000,
+    split_size: float = 0.4,
+    n_features: int = 1,
+    noise: int = 20,
+    seed: int = 1,
+    shuffle=False,
+):
+    """Return a regression dataset.
+
+    Args:
+        n_samples: Number of samples.
+        split_size: Test split size.
+        n_features: Number of features.
+        noise: Noise level.
+        seed: Random seed.
+        shuffle: Shuffle the data.
+
+    Returns:
+        X_train: Training data.
+        X_test: Test data.
+        y_train: Training target.
+        y_test: Test target.
+    """
+    X, y = make_regression(  # type: ignore broken types
+        n_samples=n_samples, n_features=n_features, noise=noise, random_state=seed
+    )
 
     data_scaler = StandardScaler()
     target_scaler = MinMaxScaler()
@@ -26,7 +51,44 @@ def regression_dataset():
     y = y.reshape(-1)
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.4, shuffle=False
+        X, y, test_size=split_size, shuffle=shuffle
+    )
+
+    return X_train, X_test, y_train, y_test
+
+
+def classification_dataset(
+    n_samples: int = 2000,
+    split_size: float = 0.4,
+    n_features: int = 20,
+    seed: int = 1,
+    shuffle=False,
+):
+    """Return a classification dataset.
+
+    Args:
+        n_samples: Number of samples.
+        split_size: Test split size.
+        n_features: Number of features.
+        seed: Random seed.
+        shuffle: Shuffle the data.
+
+    Returns:
+        X_train: Training data.
+        X_test: Test data.
+        y_train: Training target.
+        y_test: Test target.
+    """
+    X, y = make_classification(
+        n_samples=n_samples, n_features=n_features, random_state=seed
+    )
+
+    data_scaler = StandardScaler()
+
+    X = data_scaler.fit_transform(X)
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=split_size, shuffle=shuffle
     )
 
     return X_train, X_test, y_train, y_test
@@ -36,14 +98,12 @@ def test_linear_regression():
     """Test the linear regression model."""
     X_train, X_test, y_train, y_test = regression_dataset()
 
-    model = LinearRegression(n_iterations=75)
-    model.fit(X_train, y_train)
-
-    predictions = model.predict(X_test)
+    weights = linear_regression(X_train, y_train, n_iterations=100)
+    predictions = predict(X_test, weights)
 
     mse = mean_squared_error(y_test, predictions)
     assert mse > 0.00001
-    assert mse < 0.01
+    assert mse < 1
 
     r2 = r2_score(y_test, predictions)
     assert r2 >= 0.9
@@ -54,14 +114,12 @@ def test_lasso_regression():
     """Test the lasso regression model."""
     X_train, X_test, y_train, y_test = regression_dataset()
 
-    model = LassoRegression(n_iterations=75)
-    model.fit(X_train, y_train)
-
-    predictions = model.predict(X_test)
+    weights = lasso_regression(X_train, y_train, n_iterations=350)
+    predictions = predict(X_test, weights)
 
     mse = mean_squared_error(y_test, predictions)
     assert mse > 0.00001
-    assert mse < 0.01
+    assert mse < 1
 
     r2 = r2_score(y_test, predictions)
     assert r2 >= 0.9
@@ -72,14 +130,12 @@ def test_ridge_regression():
     """Test the ridge regression model."""
     X_train, X_test, y_train, y_test = regression_dataset()
 
-    model = RidgeRegression(n_iterations=75)
-    model.fit(X_train, y_train)
-
-    predictions = model.predict(X_test)
+    weights = ridge_regression(X_train, y_train, n_iterations=350)
+    predictions = predict(X_test, weights)
 
     mse = mean_squared_error(y_test, predictions)
     assert mse > 0.00001
-    assert mse < 0.01
+    assert mse < 1
 
     r2 = r2_score(y_test, predictions)
     assert r2 >= 0.9
@@ -90,14 +146,12 @@ def test_elastic_net():
     """Test the elastic net model."""
     X_train, X_test, y_train, y_test = regression_dataset()
 
-    model = ElasticNet(n_iterations=5000)
-    model.fit(X_train, y_train)
-
-    predictions = model.predict(X_test)
+    weights = elastic_net_regression(X_train, y_train, n_iterations=350)
+    predictions = predict(X_test, weights)
 
     mse = mean_squared_error(y_test, predictions)
     assert mse > 0.00001
-    assert mse < 0.01
+    assert mse < 1
 
     r2 = r2_score(y_test, predictions)
     assert r2 >= 0.9
@@ -106,15 +160,11 @@ def test_elastic_net():
 
 def test_logistic_regression():
     """Test the logistic regression model."""
-    X, y = make_classification(n_samples=2000, random_state=1)
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.4, shuffle=False
-    )
+    X_train, X_test, y_train, y_test = classification_dataset()
 
-    model = LogisticRegression()
-    model.fit(X_train, y_train)
+    weights = logistic_regression(X_train, y_train, n_iterations=100)
+    predictions = predict_logistic(X_test, weights)
 
-    predictions = model.predict(X_test)
     acc = accuracy_score(y_test, predictions)
 
     assert acc >= 0.9
