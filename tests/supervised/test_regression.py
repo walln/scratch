@@ -1,5 +1,7 @@
 """Test regression models."""
 
+import jax.numpy as jnp
+import pytest
 from scratch.supervised.regression import (
     elastic_net_regression,
     lasso_regression,
@@ -9,94 +11,28 @@ from scratch.supervised.regression import (
     predict_logistic,
     ridge_regression,
 )
-from sklearn.datasets import make_classification, make_regression
 from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, r2_score
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
+
+from tests.utils import classification_dataset, regression_dataset
 
 
-def regression_dataset(
-    n_samples: int = 2000,
-    split_size: float = 0.4,
-    n_features: int = 1,
-    noise: int = 20,
-    seed: int = 1,
-    shuffle=False,
-):
-    """Return a regression dataset.
-
-    Args:
-        n_samples: Number of samples.
-        split_size: Test split size.
-        n_features: Number of features.
-        noise: Noise level.
-        seed: Random seed.
-        shuffle: Shuffle the data.
-
-    Returns:
-        X_train: Training data.
-        X_test: Test data.
-        y_train: Training target.
-        y_test: Test target.
-    """
-    X, y = make_regression(  # type: ignore broken types
-        n_samples=n_samples, n_features=n_features, noise=noise, random_state=seed
-    )
-
-    data_scaler = StandardScaler()
-    target_scaler = MinMaxScaler()
-
-    X = data_scaler.fit_transform(X)
-    y = target_scaler.fit_transform(y.reshape(-1, 1))
-    y = y.reshape(-1)
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=split_size, shuffle=shuffle
-    )
-
-    return X_train, X_test, y_train, y_test
-
-
-def classification_dataset(
-    n_samples: int = 2000,
-    split_size: float = 0.4,
-    n_features: int = 20,
-    seed: int = 1,
-    shuffle=False,
-):
-    """Return a classification dataset.
-
-    Args:
-        n_samples: Number of samples.
-        split_size: Test split size.
-        n_features: Number of features.
-        seed: Random seed.
-        shuffle: Shuffle the data.
-
-    Returns:
-        X_train: Training data.
-        X_test: Test data.
-        y_train: Training target.
-        y_test: Test target.
-    """
-    X, y = make_classification(
-        n_samples=n_samples, n_features=n_features, random_state=seed
-    )
-
-    data_scaler = StandardScaler()
-
-    X = data_scaler.fit_transform(X)
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=split_size, shuffle=shuffle
-    )
-
-    return X_train, X_test, y_train, y_test
-
-
-def test_linear_regression():
-    """Test the linear regression model."""
+@pytest.fixture()
+def regression_data() -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+    """Return a regression dataset."""
     X_train, X_test, y_train, y_test = regression_dataset()
+    return X_train, X_test, y_train, y_test
+
+
+@pytest.fixture()
+def classification_data() -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+    """Return a classification dataset."""
+    X_train, X_test, y_train, y_test = classification_dataset()
+    return X_train, X_test, y_train, y_test
+
+
+def test_linear_regression(regression_data):
+    """Test the linear regression model."""
+    X_train, X_test, y_train, y_test = regression_data
 
     weights = linear_regression(X_train, y_train, n_iterations=100)
     predictions = predict(X_test, weights)
@@ -110,9 +46,9 @@ def test_linear_regression():
     assert r2 < 1.0
 
 
-def test_lasso_regression():
+def test_lasso_regression(regression_data):
     """Test the lasso regression model."""
-    X_train, X_test, y_train, y_test = regression_dataset()
+    X_train, X_test, y_train, y_test = regression_data
 
     weights = lasso_regression(X_train, y_train, n_iterations=350)
     predictions = predict(X_test, weights)
@@ -126,9 +62,9 @@ def test_lasso_regression():
     assert r2 < 1.0
 
 
-def test_ridge_regression():
+def test_ridge_regression(regression_data):
     """Test the ridge regression model."""
-    X_train, X_test, y_train, y_test = regression_dataset()
+    X_train, X_test, y_train, y_test = regression_data
 
     weights = ridge_regression(X_train, y_train, n_iterations=350)
     predictions = predict(X_test, weights)
@@ -142,9 +78,9 @@ def test_ridge_regression():
     assert r2 < 1.0
 
 
-def test_elastic_net():
+def test_elastic_net(regression_data):
     """Test the elastic net model."""
-    X_train, X_test, y_train, y_test = regression_dataset()
+    X_train, X_test, y_train, y_test = regression_data
 
     weights = elastic_net_regression(X_train, y_train, n_iterations=350)
     predictions = predict(X_test, weights)
@@ -158,9 +94,9 @@ def test_elastic_net():
     assert r2 < 1.0
 
 
-def test_logistic_regression():
+def test_logistic_regression(classification_data):
     """Test the logistic regression model."""
-    X_train, X_test, y_train, y_test = classification_dataset()
+    X_train, X_test, y_train, y_test = classification_data
 
     weights = logistic_regression(X_train, y_train, n_iterations=100)
     predictions = predict_logistic(X_test, weights)
