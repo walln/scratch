@@ -5,10 +5,13 @@ import pytest
 from scratch.supervised.support_vector_machine import (
     concat_weights_and_bias,
     linear_kernel,
-    predict,
+    predict_classification,
+    predict_regression,
     split_weights_and_bias,
-    support_vector_machine,
-    svm_loss,
+    support_vector_machine_classifier,
+    support_vector_machine_regressor,
+    svm_classification_loss,
+    svm_regression_loss,
 )
 
 from tests.utils import classification_dataset, regression_dataset
@@ -45,34 +48,79 @@ def test_concat_split_params():
     assert b == b_split
 
 
-def test_svm_loss(classification_data):
-    """Test the SVM loss function."""
-    X_train, X_test, _, y_test = classification_data
-    W = jnp.zeros(X_train.shape[1])
+def test_svm_classification_loss(classification_data):
+    """Test the SVM classification loss function."""
+    X_train, _, y_train, _ = classification_data
+    W = jnp.zeros(X_train.shape[0])
     b = jnp.ones(1)
     params = concat_weights_and_bias(W, b)
-    loss = svm_loss(params, linear_kernel, X_test, y_test, C=1.0)
+    loss = svm_classification_loss(params, linear_kernel, X_train, y_train, C=1.0)
     assert loss > 0
 
 
-def test_train_svm(classification_data):
-    """Test the training function."""
+def test_svm_regression_loss(regression_data):
+    """Test the SVM regression loss function."""
+    X_train, _, y_train, _ = regression_data
+    W = jnp.zeros(X_train.shape[0])
+    b = jnp.ones(1)
+    params = concat_weights_and_bias(W, b)
+    loss = svm_regression_loss(params, linear_kernel, X_train, y_train, C=1.0)
+    assert loss > 0
+
+
+def test_train_svm_classifier(classification_data):
+    """Test the classifier training function."""
     _, X_test, _, y_test = classification_data
-    params = support_vector_machine(
+    params = support_vector_machine_classifier(
         X_test, y_test, kernel=linear_kernel, C=1.0, learning_rate=1e-3, num_epochs=10
     )
     assert isinstance(params, jnp.ndarray)
     W, b = split_weights_and_bias(params)
-    assert W.shape == (X_test.shape[1],)
+    assert W.shape == (X_test.shape[0],)
 
 
-def test_predict(classification_data):
-    """Test the predict function."""
-    _, X_test, _, y_test = classification_data
-    params = support_vector_machine(
-        X_test, y_test, kernel=linear_kernel, C=1.0, learning_rate=1e-3, num_epochs=100
+def test_train_svm_regressor(regression_data):
+    """Test the SVM regressor training function."""
+    X_train, _, y_train, _ = regression_data
+    params = support_vector_machine_regressor(
+        X_train,
+        y_train,
+        kernel=linear_kernel,
+        C=1.0,
+        epsilon=0.1,
+        learning_rate=1e-3,
+        num_epochs=10,
     )
     assert isinstance(params, jnp.ndarray)
-    predictions = predict(params, linear_kernel, X_test)
+    W, b = split_weights_and_bias(params)
+    assert W.shape == (X_train.shape[0],)
+
+
+def test_predict_classification(classification_data):
+    """Test the predict function."""
+    _, X_test, _, y_test = classification_data
+    params = support_vector_machine_classifier(
+        X_test, y_test, kernel=linear_kernel, C=1.0, learning_rate=1e-3, num_epochs=10
+    )
+    assert isinstance(params, jnp.ndarray)
+    predictions = predict_classification(params, linear_kernel, X_test)
     assert predictions.shape == y_test.shape
     assert jnp.all(jnp.isin(predictions, jnp.array([-1, 1])))
+
+
+def test_predict_regression(regression_data):
+    """Test the SVM regression predict function."""
+    X_train, _, y_train, _ = regression_data
+    params = support_vector_machine_regressor(
+        X_train,
+        y_train,
+        kernel=linear_kernel,
+        C=1.0,
+        epsilon=0.1,
+        learning_rate=1e-3,
+        num_epochs=10,
+    )
+    assert isinstance(params, jnp.ndarray)
+    predictions = predict_regression(params, linear_kernel, X_train)
+    assert predictions.shape == y_train.shape
+    assert jnp.all(jnp.isfinite(predictions))
