@@ -480,7 +480,14 @@ def segsum(x: jnp.ndarray):
     return x_segsum
 
 
-def ssd(x, A, B, C, chunk_size: int, initial_states=None):
+def ssd(
+    x: jnp.ndarray,
+    A: jnp.ndarray,
+    B: jnp.ndarray,
+    C: jnp.ndarray,
+    chunk_size: int,
+    initial_states: jnp.ndarray | None = None,
+):
     """Structured State Space Duality (SSD).
 
     This function implements the SSD algorithm for computing the SSM states. It
