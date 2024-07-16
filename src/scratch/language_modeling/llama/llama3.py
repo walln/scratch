@@ -23,12 +23,9 @@ from dataclasses import dataclass
 
 import jax
 import jax.numpy as jnp
-import numpy as np
 from flax import nnx
-from scratch.language_modeling.llama.common import (
-    apply_rotary_emb,
-    precompute_theta_pos_freqs,
-    repeat_kv,
+from scratch.deep_learning.layers.attention.grouped_query_attention import (
+    GroupedQueryAttention,
 )
 
 
@@ -61,129 +58,10 @@ class Llama3Config:
     norm_eps: float = 1e-5
     rope_theta: float = 500000
 
+    # Needed for KV cache
+    use_kv_cache: bool = True
     max_batch_size: int = 32
     max_seq_len: int = 2048
-
-
-class LLama3GroupedQueryAttention(nnx.Module):
-    """Grouped query attention with a kv cache.
-
-    Llama 3 uses a grouped query attention with a kv cache. This is pretty
-    much the same as the generalized grouped query attention, but it has a kv cache
-    and a prefix index for prompt tokens.
-    """
-
-    def __init__(
-        self,
-        d_model: int,
-        n_heads: int,
-        n_kv_heads: int | None = None,
-        max_batch_size: int = 32,
-        max_seq_len: int = 2048,
-        *,
-        rngs: nnx.Rngs,
-    ):
-        """Initialize the grouped query attention module.
-
-        Args:
-            d_model: The model dimension.
-            n_heads: The number of heads.
-            n_kv_heads: The number of kv heads. If None, defaults to n_heads.
-            max_batch_size: The maximum batch size. Defaults to 32.
-            max_seq_len: The maximum sequence length. Defaults to 2048.
-            rngs: The random number generators.
-        """
-        n_kv_heads = n_heads if n_kv_heads is None else n_kv_heads
-        head_dim = d_model // n_heads
-
-        self.n_heads = n_heads
-        self.n_kv_heads = n_kv_heads
-        self.head_dim = head_dim
-
-        self.w_q = nnx.Linear(d_model, n_heads * head_dim, use_bias=False, rngs=rngs)
-        self.w_k = nnx.Linear(d_model, n_kv_heads * head_dim, use_bias=False, rngs=rngs)
-        self.w_v = nnx.Linear(d_model, n_kv_heads * head_dim, use_bias=False, rngs=rngs)
-        self.w_o = nnx.Linear(n_heads * head_dim, d_model, use_bias=False, rngs=rngs)
-
-        self.cache_k = jnp.zeros(
-            (
-                max_batch_size,
-                max_seq_len,
-                n_kv_heads,
-                head_dim,
-            )
-        )
-        self.cache_v = jnp.zeros(
-            (
-                max_batch_size,
-                max_seq_len,
-                n_kv_heads,
-                head_dim,
-            )
-        )
-
-    def __call__(
-        self,
-        x: jnp.ndarray,
-        start_pos: int,
-        freqs_cis: jnp.ndarray,
-        mask: jnp.ndarray | None = None,
-    ) -> jnp.ndarray:
-        """Compute the grouped query attention.
-
-        Args:
-            x: The input tensor.
-            start_pos: The start position of the input sequence.
-            freqs_cis: The frequencies for the cosine and sine functions.
-            mask: The mask for the attention.
-
-        Returns:
-            The output tensor.
-        """
-        # Get the batch size and sequence length
-        batch, seq_len, _ = x.shape
-
-        # Get the query, key, and value vectors
-        xq = self.w_q(x)
-        xk = self.w_k(x)
-        xv = self.w_v(x)
-
-        # Compute the attention weights
-        xq = xq.reshape(batch, seq_len, self.n_heads, self.head_dim)
-        xk = xk.reshape(batch, seq_len, self.n_kv_heads, self.head_dim)
-        xv = xv.reshape(batch, seq_len, self.n_kv_heads, self.head_dim)
-
-        # apply rotary embedding
-        xq, xk = apply_rotary_emb(xq, xk, freqs_cis)
-
-        self.cache_k.at[:batch, start_pos : start_pos + seq_len].set(xk)
-        self.cache_v.at[:batch, start_pos : start_pos + seq_len].set(xv)
-
-        keys = self.cache_k[:batch, : start_pos + seq_len]
-        values = self.cache_v[:batch, : start_pos + seq_len]
-
-        # repeat k/v heads if n_kv_heads < n_heads
-        keys = repeat_kv(keys, self.n_heads // self.n_kv_heads)
-        values = repeat_kv(values, self.n_heads // self.n_kv_heads)
-
-        xq = xq.transpose((0, 2, 1, 3))  # (batch, n_heads, seq_len, head_dim)
-        keys = keys.transpose(
-            (0, 2, 1, 3)
-        )  # (batch, n_heads, cache_len + seq_len, head_dim)
-        values = values.transpose(
-            (0, 2, 1, 3)
-        )  # (batch, n_heads, cache_len + seq_len, head_dim)
-
-        # compute attention scores
-        scores = xq @ keys.transpose((0, 1, 3, 2)) / np.sqrt(self.head_dim)
-        if mask is not None:
-            scores = scores + mask
-
-        scores = jax.nn.softmax(scores.astype(jnp.float32), axis=-1)
-        output = scores @ values  # (batch, n_heads, seq_len, head_dim)
-        output = output.transpose((0, 2, 1, 3))  # (batch, seq_len, n_heads, head_dim)
-        output = output.reshape(batch, seq_len, -1)
-        return self.w_o(output)
 
 
 class LLama3MLP(nnx.Module):
@@ -246,10 +124,11 @@ class LLama3TransformerBlock(nnx.Module):
             config: The configuration for the model.
             rngs: The random number generators.
         """
-        self.attn = LLama3GroupedQueryAttention(
+        self.attn = GroupedQueryAttention(
             config.d_model,
             config.n_heads,
             n_kv_heads=config.n_kv_heads,
+            use_kv_cache=config.use_kv_cache,
             max_batch_size=config.max_batch_size,
             max_seq_len=config.max_seq_len,
             rngs=rngs,
@@ -268,7 +147,7 @@ class LLama3TransformerBlock(nnx.Module):
         self,
         x: jnp.ndarray,
         start_pos: int,
-        freqs_cis: jnp.ndarray,
+        freqs_complex: jnp.ndarray,
         mask: jnp.ndarray | None = None,
     ) -> jnp.ndarray:
         """Compute the transformer block forward pass.
@@ -276,13 +155,18 @@ class LLama3TransformerBlock(nnx.Module):
         Args:
             x: The input tensor.
             start_pos: The start position of the input sequence.
-            freqs_cis: The frequencies for the cosine and sine functions.
+            freqs_complex: The frequencies for the cosine and sine functions.
             mask: The mask for the attention.
 
         Returns:
             The output tensor.
         """
-        h = x + self.attn(self.attn_norm(x), start_pos, freqs_cis, mask)
+        h = x + self.attn(
+            self.attn_norm(x),
+            start_pos=start_pos,
+            freqs_complex=freqs_complex,
+            mask=mask,
+        )
         out = h + self.mlp(self.mlp_norm(h))
         return out
 
@@ -316,7 +200,7 @@ class LLama3(nnx.Module):
             config.d_model, config.vocab_size, use_bias=False, rngs=rngs
         )
 
-        self.freqs_cis = precompute_theta_pos_freqs(
+        self.freqs_complex = GroupedQueryAttention.precompute_theta_pos_freqs(
             config.d_model // config.n_heads, config.max_seq_len * 2, config.rope_theta
         )
 
@@ -338,18 +222,16 @@ class LLama3(nnx.Module):
         """
         batch, seq_len = x.shape
         h = self.tok_embeddings(x)
-        freqs_cis = self.freqs_cis[start_pos : start_pos + seq_len]
+        freqs_complex = self.freqs_complex[start_pos : start_pos + seq_len]
 
         mask = None
         if seq_len > 1:
             mask = jnp.full((seq_len, seq_len), -jnp.inf)
-
             mask = jnp.triu(mask, k=1)
-
             mask = jnp.hstack([jnp.zeros((seq_len, start_pos)), mask]).astype(h.dtype)
 
         for layer in self.layers:
-            h = layer(h, start_pos, freqs_cis, mask)
+            h = layer(h, start_pos, freqs_complex, mask)
         h = self.norm(h)
         output = self.output(h).astype(jnp.float32)
         return output
