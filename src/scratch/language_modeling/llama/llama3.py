@@ -28,6 +28,7 @@ from flax import nnx
 from scratch.deep_learning.layers.attention.grouped_query_attention import (
     GroupedQueryAttention,
 )
+from scratch.deep_learning.layers.attention.kv_cache import KVCache
 
 
 @dataclass
@@ -60,7 +61,6 @@ class Llama3Config:
     rope_theta: float = 500000
 
     # Needed for KV cache
-    use_kv_cache: bool = True
     max_batch_size: int = 32
     max_seq_len: int = 2048
 
@@ -129,9 +129,6 @@ class LLama3TransformerBlock(nnx.Module):
             config.d_model,
             config.n_heads,
             n_kv_heads=config.n_kv_heads,
-            use_kv_cache=config.use_kv_cache,
-            max_batch_size=config.max_batch_size,
-            max_seq_len=config.max_seq_len,
             rngs=rngs,
         )
         self.mlp = LLama3MLP(
@@ -150,7 +147,8 @@ class LLama3TransformerBlock(nnx.Module):
         start_pos: int,
         freqs_complex: jnp.ndarray,
         mask: jnp.ndarray | None = None,
-    ) -> jnp.ndarray:
+        kv_cache: KVCache | None = None,
+    ) -> tuple[jnp.ndarray, KVCache | None]:
         """Compute the transformer block forward pass.
 
         Args:
@@ -158,18 +156,21 @@ class LLama3TransformerBlock(nnx.Module):
             start_pos: The start position of the input sequence.
             freqs_complex: The frequencies for the cosine and sine functions.
             mask: The mask for the attention.
+            kv_cache: The KV cache. Defaults to None.
 
         Returns:
-            The output tensor.
+            The output tensor and the updated KV cache.
         """
-        h = x + self.attn(
+        h, new_kv_cache = self.attn(
             self.attn_norm(x),
             start_pos=start_pos,
             freqs_complex=freqs_complex,
             mask=mask,
+            kv_cache=kv_cache,
         )
+        h = x + h
         out = h + self.mlp(self.mlp_norm(h))
-        return out
+        return out, new_kv_cache
 
 
 class LLama3(nnx.Module):
@@ -209,17 +210,17 @@ class LLama3(nnx.Module):
         self,
         x: jnp.ndarray,
         start_pos: int,
-        mask: jnp.ndarray | None = None,
-    ) -> jnp.ndarray:
+        kv_cache: list[KVCache] | None = None,
+    ) -> tuple[jnp.ndarray, list[KVCache | None]]:
         """Compute the LLama 3 forward pass.
 
         Args:
             x: The input tensor.
             start_pos: The start position of the input sequence.
-            mask: The mask for the attention.
+            kv_cache: The KV cache for each layer. Defaults to None.
 
         Returns:
-            The output tensor.
+            The output tensor and the updated KV cache for each layer.
         """
         batch, seq_len = x.shape
         h = self.tok_embeddings(x)
@@ -231,11 +232,21 @@ class LLama3(nnx.Module):
             mask = jnp.triu(mask, k=1)
             mask = jnp.hstack([jnp.zeros((seq_len, start_pos)), mask]).astype(h.dtype)
 
-        for layer in self.layers:
-            h = layer(h, start_pos, freqs_complex, mask)
+        new_kv_cache = []
+        for i, layer in enumerate(self.layers):
+            layer_kv_cache = kv_cache[i] if kv_cache is not None else None
+            h, new_layer_kv_cache = layer(
+                h,
+                start_pos=start_pos,
+                freqs_complex=freqs_complex,
+                mask=mask,
+                kv_cache=layer_kv_cache,
+            )
+            new_kv_cache.append(new_layer_kv_cache)
+
         h = self.norm(h)
         output = self.output(h).astype(jnp.float32)
-        return output
+        return output, new_kv_cache
 
 
 if __name__ == "__main__":
@@ -248,6 +259,16 @@ if __name__ == "__main__":
         max_batch_size=2,
     )
     model = LLama3(config, rngs=nnx.Rngs(0))
+    kv_caches = [
+        KVCache.create(
+            config.n_layers,
+            config.max_batch_size,
+            config.max_seq_len,
+            config.n_heads,
+            config.d_model,
+        )
+        for _ in range(config.n_layers)
+    ]
     x = jnp.ones((1, config.max_seq_len), dtype=jnp.int32)
-    y = model(x, 0)
+    y, _ = model(x, 0, kv_caches)
     print(y.shape)
