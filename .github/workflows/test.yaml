@@ -22,7 +22,7 @@ jobs:
               run: uvx ruff check --verbose
 
             - name: Format
-              run: uvx ruff format -- --check
+              run: uvx ruff format --check
 
             - name: Typecheck
               run: uvx mypy src --enable-incomplete-feature=NewGenericSyntax
