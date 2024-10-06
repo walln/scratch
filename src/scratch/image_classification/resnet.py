@@ -14,6 +14,7 @@ from functools import partial
 from typing import Literal
 
 from flax import nnx
+
 from scratch.datasets.image_classification_dataset import (
     tiny_imagenet_dataset,
 )
@@ -77,7 +78,12 @@ class ResNetConfig:
         if preset_name not in PRESETS:
             raise ValueError(f"Unknown preset name: {preset_name}")
         config = PRESETS[preset_name]
-        return cls(num_classes=num_classes, input_channels=input_channels, **config)
+        return cls(
+            num_classes=num_classes,
+            input_channels=input_channels,
+            depths=list(config["depths"]),  # type: ignore
+            bottleneck=config["bottleneck"],
+        )
 
 
 class ResNetBlock(nnx.Module):

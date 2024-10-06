@@ -3,13 +3,13 @@ repos:
     hooks:
       - id: lint
         name: lint
-        entry: rye lint
+        entry: uvx ruff check
         language: system
         types: [python]
         pass_filenames: false
       - id: format
         name: format
-        entry: rye format --check
+        entry: uvx ruff format --check
         language: system
         types: [python]
         pass_filenames: false
@@ -19,3 +19,9 @@ repos:
         entry: "^(chore|test|feat|fix|build|docs|refactor)!?:.*$"
         args: [--multiline, --negate] # fails if the entry is NOT matched
         stages: [commit-msg]
+      - id: typecheck
+        name: typecheck
+        entry: uvx mypy src/scratch/
+        language: system
+        types: [python]
+        pass_filenames: false

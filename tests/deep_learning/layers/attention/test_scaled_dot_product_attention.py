@@ -1,6 +1,7 @@
 """Tests for the ScaledDotProductAttention layer."""
 
 import jax.numpy as jnp
+
 from scratch.deep_learning.layers.attention.scaled_dot_product_attention import (
     ScaledDotProductAttention,
 )

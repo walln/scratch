@@ -1,9 +1,10 @@
 """Test the dummy dataset."""
 
+from torch import Tensor
+
 from scratch.datasets.image_classification_dataset import (
     dummy_image_classification_dataset,
 )
-from torch import Tensor
 
 
 def test_loading():

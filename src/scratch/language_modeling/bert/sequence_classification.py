@@ -2,15 +2,16 @@
 
 import jax.numpy as jnp
 from flax import nnx
+
 from scratch.datasets.sequence_classification_dataset import (
     dummy_sequence_classification_dataset,
 )
+from scratch.datasets.utils import patch_datasets_warning
 from scratch.language_modeling.bert.model import BertConfig, BertModel
 from scratch.language_modeling.trainers.sequence_classification import (
     SequenceClassificationTrainer,
     SequenceClassificationTrainerConfig,
 )
-from scratch.utils import patch_datasets_warning
 
 
 class BertForSequenceClassification(nnx.Module):

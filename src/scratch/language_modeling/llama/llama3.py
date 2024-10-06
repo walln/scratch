@@ -24,6 +24,7 @@ from dataclasses import dataclass
 import jax
 import jax.numpy as jnp
 from flax import nnx
+
 from scratch.deep_learning.layers.attention.grouped_query_attention import (
     GroupedQueryAttention,
 )

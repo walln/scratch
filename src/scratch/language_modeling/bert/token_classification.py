@@ -2,6 +2,7 @@
 
 import jax.numpy as jnp
 from flax import nnx
+
 from scratch.datasets.token_classification_dataset import (
     dummy_token_classification_dataset,
 )

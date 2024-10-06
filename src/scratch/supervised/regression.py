@@ -472,7 +472,8 @@ def logistic_regression(
     elif optimization == "least_squares":
         for _ in range(n_iterations):
             y_pred = sigmoid(X.dot(w))
-            diag_gradient = jnp.diag(sigmoid.gradient(X.dot(w)))
+            sigmoid_grad = jax.grad(sigmoid)
+            diag_gradient = jnp.diag(sigmoid_grad(X.dot(w)))
             w = (
                 jnp.linalg.pinv(X.T.dot(diag_gradient).dot(X))
                 .dot(X.T)

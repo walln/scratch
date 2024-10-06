@@ -115,13 +115,13 @@ class Dataset(Generic[T, M]):
 
 
 def create_dataset[M, B](
-    metadata: M,  # type: ignore - generics are so well supported...
+    metadata: M,
     train_data,
     test_data,
     batch_size: int,
     transform: Callable[[B], B] | None,
     collate_fn: Callable | None = None,
-):
+) -> Dataset[B, M]:
     """Create a Dataset object for sequence classification.
 
     Args:
@@ -136,12 +136,12 @@ def create_dataset[M, B](
         The dataset
     """
     train_loader = TorchDataLoader(
-        train_data,  # type: ignore - PyTorch types are incompatible
+        train_data,
         batch_size=batch_size,
         collate_fn=collate_fn,
     )
     test_loader = TorchDataLoader(
-        test_data,  # type: ignore - PyTorch types are incompatible
+        test_data,
         batch_size=batch_size,
         collate_fn=collate_fn,
     )

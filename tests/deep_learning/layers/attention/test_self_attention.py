@@ -3,6 +3,7 @@
 import jax
 import jax.numpy as jnp
 from flax import nnx
+
 from scratch.deep_learning.layers.attention.self_attention import SelfAttention
 
 

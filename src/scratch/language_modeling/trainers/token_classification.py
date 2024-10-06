@@ -14,6 +14,7 @@ import jax.numpy as jnp
 import optax
 from flax import nnx
 from jax.sharding import NamedSharding, PartitionSpec
+
 from scratch.datasets.dataset import DataLoader
 from scratch.datasets.token_classification_dataset import TokenClassificationBatch
 from scratch.trainer import SupervisedTrainer, SupervisedTrainerConfig, TrainState

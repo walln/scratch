@@ -61,7 +61,7 @@ class TokenizerMetadata:
     @classmethod
     def from_tokenizer(cls, tokenizer: PreTrainedTokenizerBase, max_length: int):
         """Create metadata from a tokenizer instance."""
-        vocab_size = tokenizer.vocab_size  # type: ignore - love the types transformers :(
+        vocab_size = tokenizer.vocab_size  # type: ignore
         if not vocab_size:
             raise ValueError("The tokenizer does not have a vocab size.")
         return cls(
@@ -94,7 +94,9 @@ def load_tokenizer(name_or_path: str, max_length: int = 512):
     Returns:
         The tokenizer object
     """
-    tokenizer = AutoTokenizer.from_pretrained(name_or_path)
+    tokenizer = AutoTokenizer.from_pretrained(
+        name_or_path, clean_up_tokenization_spaces=True
+    )
     tokenizer.model_max_length = max_length
 
     if tokenizer.pad_token is None:

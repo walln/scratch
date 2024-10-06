@@ -4,6 +4,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 from flax import nnx
+
 from scratch.deep_learning.layers.attention.grouped_query_attention import (
     GroupedQueryAttention,
 )

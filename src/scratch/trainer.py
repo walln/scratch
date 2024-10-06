@@ -7,7 +7,7 @@ It includes support for training state management, checkpointing, and logging.
 import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Generic, Literal, TypeVar
+from typing import Any, Generic, Literal, TypeVar
 
 import jax
 import optax
@@ -148,12 +148,12 @@ class BaseTrainer(Generic[M], ABC):
         pass
 
     @abstractmethod
-    def train(self):
+    def train(self, train_loader: Any):
         """Train the model for one pass over the training set."""
         pass
 
     @abstractmethod
-    def eval(self):
+    def eval(self, test_loader: Any):
         """Evaluate the model on the test set."""
         pass
 
@@ -230,8 +230,8 @@ class BaseTrainer(Generic[M], ABC):
             step=step,
             metrics=metrics,
             args=ocp.args.Composite(
-                model=ocp.args.PyTreeSave(state),  # type: ignore - orbax types kinda suck
-                opt_state=ocp.args.PyTreeSave(opt_state),  # type: ignore - orbax types kinda suck
+                model=ocp.args.PyTreeSave(state),
+                opt_state=ocp.args.PyTreeSave(opt_state),
             ),
         )
         self.checkpoint_manager.wait_until_finished()
@@ -250,8 +250,8 @@ class BaseTrainer(Generic[M], ABC):
         self.checkpoint_manager.restore(
             step=step,
             args=ocp.args.Composite(
-                model=ocp.args.PyTreeRestore(state),  # type: ignore - orbax types kinda suck
-                opt_state=ocp.args.PyTreeRestore(opt_state),  # type: ignore - orbax types kinda suck
+                model=ocp.args.PyTreeRestore(state),
+                opt_state=ocp.args.PyTreeRestore(opt_state),
             ),
         )
 

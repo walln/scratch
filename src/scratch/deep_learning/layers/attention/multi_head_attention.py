@@ -11,6 +11,7 @@ Originally proposed in [Attention Is All You Need](https://arxiv.org/abs/1706.03
 
 import jax.numpy as jnp
 from flax import nnx
+
 from scratch.deep_learning.layers.attention.scaled_dot_product_attention import (
     ScaledDotProductAttention,
 )

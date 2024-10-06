@@ -2,6 +2,7 @@
 
 import jax
 import jax.numpy as jnp
+
 from scratch.deep_learning.layers.attention.dot_product_attention import (
     DotProductAttention,
 )
