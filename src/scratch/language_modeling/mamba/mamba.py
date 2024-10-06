@@ -415,11 +415,8 @@ class Mamba2(nnx.Module):
         """
         self.wte = nnx.Embed(config.vocab_size, config.d_model, rngs=rngs)
         self.layers = [MambaLayer(config, rngs=rngs) for _ in range(config.n_layers)]
-        self.norm = nnx.RMSNorm(config.d_model, rngs=rngs)
-        self.head_norm = nnx.RMSNorm(config.d_model, rngs=rngs)
-        # self.head = nnx.Linear(
-        #     config.d_model, config.vocab_size, use_bias=False, rngs=rngs
-        # )
+        self.norm = nnx.RMSNorm(config.d_model, rngs=rngs, epsilon=1e-5)
+        self.head_norm = nnx.RMSNorm(config.d_model, rngs=rngs, epsilon=1e-5)
 
     def __call__(
         self,
@@ -447,7 +444,7 @@ class Mamba2(nnx.Module):
             assert hidden_states is not None
             y, h = layer(self.norm(x), hidden_states[i])
             assert isinstance(h, InferenceCache) or h is None
-            hidden_states[i] = h  # type: ignore - type not narrowing?
+            hidden_states[i] = h  # type: ignore
             x = x + y
 
         x = self.head_norm(x)

@@ -2,6 +2,7 @@
 
 import jax.numpy as jnp
 from flax import nnx
+
 from scratch.datasets.question_answering_dataset import dummy_question_answering_dataset
 from scratch.datasets.utils import patch_datasets_warning
 from scratch.language_modeling.bert.model import BertConfig, BertModel

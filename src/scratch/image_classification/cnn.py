@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from functools import partial
 
 from flax import nnx
+
 from scratch.datasets.image_classification_dataset import (
     mnist_dataset,
 )

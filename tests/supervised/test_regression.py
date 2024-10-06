@@ -2,6 +2,8 @@
 
 import jax.numpy as jnp
 import pytest
+from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, r2_score
+
 from scratch.supervised.regression import (
     elastic_net_regression,
     lasso_regression,
@@ -11,19 +13,17 @@ from scratch.supervised.regression import (
     predict_logistic,
     ridge_regression,
 )
-from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, r2_score
-
 from tests.utils import classification_dataset, regression_dataset
 
 
-@pytest.fixture()
+@pytest.fixture
 def regression_data() -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """Return a regression dataset."""
     X_train, X_test, y_train, y_test = regression_dataset()
     return X_train, X_test, y_train, y_test
 
 
-@pytest.fixture()
+@pytest.fixture
 def classification_data() -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """Return a classification dataset."""
     X_train, X_test, y_train, y_test = classification_dataset()

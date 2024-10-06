@@ -59,7 +59,6 @@ class OLMoConfig:
     use_multi_query_attention: bool = False
     clip_qkv: float | None = None
     attention_layer_norm_with_affine: bool = True
-    weight_tying: bool = True
     scale_logits: bool = False
 
     @property

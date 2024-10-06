@@ -15,6 +15,7 @@ from dataclasses import dataclass
 import jax
 import jax.numpy as jnp
 from flax import nnx
+
 from scratch.datasets.image_classification_dataset import (
     tiny_imagenet_dataset,
 )

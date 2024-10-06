@@ -14,6 +14,7 @@ import jax.numpy as jnp
 import optax
 from flax import nnx
 from jax.sharding import NamedSharding, PartitionSpec
+
 from scratch.datasets.dataset import DataLoader
 from scratch.datasets.image_classification_dataset import ImageClassificationBatch
 from scratch.trainer import (
@@ -141,7 +142,7 @@ class ImageClassificationParallelTrainer(SupervisedTrainer[M]):
         def eval_step(
             model: M, train_state: TrainState, inputs: jnp.ndarray, targets: jnp.ndarray
         ):
-            logits = model(inputs)  # type: ignore - model is a generic and python generic interescion types are not supported
+            logits = model(inputs)  # type: ignore
             train_state.update_metrics(
                 loss=0.0, logits=logits, labels=jnp.argmax(targets, axis=-1)
             )

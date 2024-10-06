@@ -2,12 +2,12 @@
 
 import jax.numpy as jnp
 import pytest
-from scratch.supervised.k_nearest_neighbors import knn
 
+from scratch.supervised.k_nearest_neighbors import knn
 from tests.utils import classification_dataset
 
 
-@pytest.fixture()
+@pytest.fixture
 def classification_data() -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """Return a classification dataset."""
     X_train, X_test, y_train, y_test = classification_dataset()

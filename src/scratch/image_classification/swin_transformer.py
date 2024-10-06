@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 import jax
 import jax.numpy as jnp
 from flax import nnx
+
 from scratch.datasets.image_classification_dataset import (
     dummy_image_classification_dataset,
 )
@@ -537,12 +538,12 @@ class SwinTransformerBlock(nnx.Module):
             x = shifted_x
 
         x = x.reshape(B, H * W, C)
-        x = shortcut + self.drop_path(x)
+        x = shortcut + self.drop_path(x)  # type: ignore
 
         # Feedforward
         x = self.norm2(x)
         x = self.mlp(x)
-        x = self.drop_path(x)
+        x = self.drop_path(x)  # type: ignore
         return x
 
 

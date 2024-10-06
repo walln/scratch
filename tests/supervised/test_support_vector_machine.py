@@ -2,6 +2,7 @@
 
 import jax.numpy as jnp
 import pytest
+
 from scratch.supervised.support_vector_machine import (
     concat_weights_and_bias,
     linear_kernel,
@@ -13,18 +14,17 @@ from scratch.supervised.support_vector_machine import (
     svm_classification_loss,
     svm_regression_loss,
 )
-
 from tests.utils import classification_dataset, regression_dataset
 
 
-@pytest.fixture()
+@pytest.fixture
 def regression_data():
     """Return a regression dataset."""
     X_train, X_test, y_train, y_test = regression_dataset()
     return X_train, X_test, y_train, y_test
 
 
-@pytest.fixture()
+@pytest.fixture
 def classification_data() -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """Return a classification dataset."""
     X_train, X_test, y_train, y_test = classification_dataset()

@@ -14,6 +14,7 @@ import jax.numpy as jnp
 import optax
 from flax import nnx
 from jax.sharding import NamedSharding, PartitionSpec
+
 from scratch.datasets.dataset import DataLoader
 from scratch.datasets.sequence_classification_dataset import SequenceClassificationBatch
 from scratch.trainer import SupervisedTrainer, SupervisedTrainerConfig, TrainState
@@ -128,7 +129,7 @@ class SequenceClassificationTrainer(SupervisedTrainer[M]):
                 input_ids=batch["input_ids"],
                 attention_mask=batch["attention_mask"],
                 train=True,
-            )  # type: ignore - generic type tricks
+            )  # type: ignore
             train_state.update_metrics(
                 loss=0.0, logits=logits, labels=jnp.argmax(batch["labels"], axis=-1)
             )
