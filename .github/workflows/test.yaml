@@ -12,22 +12,22 @@ jobs:
         steps:
             - uses: actions/checkout@v4
 
-            - name: Install a specific version
-              uses: eifinger/setup-rye@v3
-              with:
-                enable-cache: true
-                version: 'latest'
+            - name: Install uv
+              uses: astral-sh/setup-uv@v3
 
             - name: Install dependencies
-              run: rye sync
+              run: uv sync
 
             - name: Lint
-              run: rye run ruff check --verbose
+              run: uvx ruff check --verbose
 
             - name: Format
-              run: rye format -- --check
+              run: uvx ruff format -- --check
+
+            - name: Typecheck
+              run: uvx mypy src --enable-incomplete-feature=NewGenericSyntax
 
             - name: Test
-              run: rye test
+              run: uv test
 
 
