@@ -21,6 +21,8 @@ import jax
 import jax.numpy as jnp
 from flax import nnx
 
+from scratch.deep_learning.layers.attention.kv_cache import KVCache
+
 
 class GroupedQueryAttention(nnx.Module):
     """Grouped query attention module with optional KV cache."""
@@ -31,9 +33,6 @@ class GroupedQueryAttention(nnx.Module):
         n_heads: int,
         n_kv_heads: int | None = None,
         n_q_heads: int | None = None,
-        max_batch_size: int = 32,
-        max_seq_len: int = 2048,
-        use_kv_cache=True,
         *,
         rngs: nnx.Rngs,
     ):
@@ -44,9 +43,6 @@ class GroupedQueryAttention(nnx.Module):
             n_heads: The number of attention heads.
             n_kv_heads: The number of key and value heads. Defaults to `n_heads`.
             n_q_heads: The number of query heads. Defaults to `n_heads`.
-            max_batch_size: The maximum batch size. Defaults to 32.
-            max_seq_len: The maximum sequence length. Defaults to 2048.
-            use_kv_cache: Whether to use the key-value cache. Defaults to True.
             rngs: The random number generators.
         """
         n_q_heads = n_heads if n_q_heads is None else n_q_heads
@@ -61,28 +57,20 @@ class GroupedQueryAttention(nnx.Module):
         self.n_kv_heads = n_kv_heads
         self.n_rep = n_rep
         self.head_dim = head_dim
-        self.use_kv_cache = use_kv_cache
 
         self.w_q = nnx.Linear(d_model, n_heads * head_dim, use_bias=False, rngs=rngs)
         self.w_k = nnx.Linear(d_model, n_kv_heads * head_dim, use_bias=False, rngs=rngs)
         self.w_v = nnx.Linear(d_model, n_kv_heads * head_dim, use_bias=False, rngs=rngs)
         self.w_o = nnx.Linear(n_heads * head_dim, d_model, use_bias=False, rngs=rngs)
 
-        if use_kv_cache:
-            self.cache_k = jnp.zeros(
-                (max_batch_size, max_seq_len, n_kv_heads, head_dim)
-            )
-            self.cache_v = jnp.zeros(
-                (max_batch_size, max_seq_len, n_kv_heads, head_dim)
-            )
-
     def __call__(
         self,
         x: jnp.ndarray,
         *,
         freqs_complex: jnp.ndarray,
-        start_pos: int = 0,  # Default start_pos to 0 but only use if use_kv_cache
+        start_pos: int = 0,
         mask: jnp.ndarray | None = None,
+        kv_cache: KVCache | None = None,
     ):
         """Compute the grouped query attention.
 
@@ -90,11 +78,12 @@ class GroupedQueryAttention(nnx.Module):
             x: The input tensor.
             freqs_complex: The frequencies for the cosine and sine functions.
             start_pos: The start position of the input sequence. Used only if
-              `use_kv_cache` is True.
+              kv_cache is provided.
             mask: The mask for the attention. Defaults to None.
+            kv_cache: The KV cache. Defaults to None.
 
         Returns:
-            The output tensor.
+            The output tensor and the updated KV cache.
         """
         batch, seq_len, _ = x.shape
 
@@ -111,15 +100,15 @@ class GroupedQueryAttention(nnx.Module):
         # Apply rotary embeddings to the query and key projections
         xq, xk = self.apply_rotary_emb(xq, xk, freqs_complex)
 
-        # Repeat the keys and values to account for the group size
-        if self.use_kv_cache:
-            keys, values = self.update_kv_cache(xk, xv, start_pos, seq_len, batch)
-
-            keys = self.repeat_kv(keys, self.n_rep)
-            values = self.repeat_kv(values, self.n_rep)
+        # Handle KV cache if provided
+        if kv_cache is not None:
+            keys, values, new_kv_cache = kv_cache.update(
+                xk, xv, 0, start_pos, self.n_rep
+            )
         else:
             keys = self.repeat_kv(xk, self.n_rep)
             values = self.repeat_kv(xv, self.n_rep)
+            new_kv_cache = None
 
         # Permute the dimensions to prepare for the attention calculation
         xq = xq.transpose((0, 2, 1, 3))  # (batch, h_q, seq_len, head_dim)
@@ -136,41 +125,7 @@ class GroupedQueryAttention(nnx.Module):
         output = output.transpose((0, 2, 1, 3)).reshape(batch, seq_len, -1)
 
         # Apply the output projection
-        return self.w_o(output)
-
-    def update_kv_cache(
-        self,
-        keys: jnp.ndarray,
-        values: jnp.ndarray,
-        start_pos: int,
-        seq_len: int,
-        batch: int,
-    ):
-        """Update the KV cache.
-
-        Args:
-            keys: The keys to update the cache with.
-            values: The values to update the cache with.
-            start_pos: The start position of the input sequence.
-            seq_len: The length of the input sequence.
-            batch: The batch size.
-
-        Returns:
-            The updated keys and values.
-        """
-        # Update the kv cache with the new keys and values for the current sequence
-        self.cache_k = self.cache_k.at[:batch, start_pos : start_pos + seq_len].set(
-            keys
-        )
-        self.cache_v = self.cache_v.at[:batch, start_pos : start_pos + seq_len].set(
-            values
-        )
-
-        # Return the updated keys and values
-        out_keys = self.cache_k[:batch, : start_pos + seq_len]
-        out_values = self.cache_v[:batch, : start_pos + seq_len]
-
-        return out_keys, out_values
+        return self.w_o(output), new_kv_cache
 
     @staticmethod
     def precompute_theta_pos_freqs(dim: int, end: int, theta: float = 10000.0):
