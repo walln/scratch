@@ -6,6 +6,7 @@ import jax
 import jax.numpy as jnp
 
 
+# TODO(walln): fix layer_idx
 class KVCache(NamedTuple):
     """KV Cache for attention layers.
 
