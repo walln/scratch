@@ -13,6 +13,8 @@ Reference:
 import jax.numpy as jnp
 from flax import nnx
 
+from scratch.deep_learning.layers.attention.kv_cache import KVCache
+
 
 class MultiQueryAttention(nnx.Module):
     """Multi-Query Attention (MQA).
@@ -26,9 +28,6 @@ class MultiQueryAttention(nnx.Module):
         d_model: int,
         n_heads: int,
         dropout_rate=0.1,
-        use_kv_cache=True,
-        max_batch_size: int = 32,
-        max_seq_len: int = 2048,
         *,
         rngs: nnx.Rngs,
     ):
@@ -38,15 +37,11 @@ class MultiQueryAttention(nnx.Module):
             d_model: The dimension of the input embeddings.
             n_heads: The number of attention heads.
             dropout_rate: The dropout rate for regularization.
-            use_kv_cache: Whether to use the key-value cache. Defaults to True.
-            max_batch_size: The maximum batch size. Defaults to 32.
-            max_seq_len: The maximum sequence length. Defaults to 2048.
             rngs: Random number generators for initializing parameters.
         """
         self.n_heads = n_heads
         self.head_dim = d_model // n_heads
         self.d_model = d_model
-        self.use_kv_cache = use_kv_cache
 
         assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
 
@@ -57,11 +52,14 @@ class MultiQueryAttention(nnx.Module):
 
         self.dropout = nnx.Dropout(rate=dropout_rate, rngs=rngs)
 
-        if use_kv_cache:
-            self.cache_k = jnp.zeros((max_batch_size, max_seq_len, self.head_dim))
-            self.cache_v = jnp.zeros((max_batch_size, max_seq_len, self.head_dim))
-
-    def __call__(self, x, mask=None, deterministic=True, start_pos=0):
+    def __call__(
+        self,
+        x,
+        mask=None,
+        deterministic=True,
+        start_pos=0,
+        kv_cache: KVCache | None = None,
+    ):
         """Applies the multi-query attention mechanism.
 
         Args:
@@ -71,65 +69,70 @@ class MultiQueryAttention(nnx.Module):
                 Defaults to True.
             start_pos: The start position of the input sequence. Used only if
                 `use_kv_cache` is True.
+            kv_cache: External KVCache to use for caching keys and values.
+                Defaults to None.
 
         Returns:
-            Output tensor of shape (batch_size, seq_length, d_model).
+            Tuple of tensor (batch_size, seq_length, d_model) and updated KVCache.
         """
-        q = self.q_proj(x)
-        k = self.k_proj(x)
-        v = self.v_proj(x)
+        q = self.q_proj(x)  # Shape (batch_size, seq_length, d_model)
+        k = self.k_proj(x)  # Shape (batch_size, seq_length, head_dim)
+        v = self.v_proj(x)  # Shape (batch_size, seq_length, head_dim)
 
-        q = q.reshape(x.shape[0], x.shape[1], self.n_heads, self.head_dim)
-        k = k.reshape(x.shape[0], -1, self.head_dim)  # Shared across heads
-        v = v.reshape(x.shape[0], -1, self.head_dim)  # Shared across heads
+        # Reshape q to include n_heads
+        q = q.reshape(x.shape[0], x.shape[1], self.n_heads, self.head_dim)  # (bqhd)
 
-        if self.use_kv_cache:
-            k, v = self.update_kv_cache(k, v, start_pos, x.shape[1], x.shape[0])
+        # Ensure k and v always have a singleton n_heads dimension
+        k = k.reshape(x.shape[0], x.shape[1], 1, self.head_dim)  # (bq1d)
+        v = v.reshape(x.shape[0], x.shape[1], 1, self.head_dim)  # (bq1d)
 
-        attn_weights = jnp.einsum("...qhd,...kd->...hqk", q, k) / jnp.sqrt(
-            self.head_dim
-        )
+        updated_kv_cache = None
+        if kv_cache is not None:
+            k, v, updated_kv_cache = self.update_kv_cache(k, v, kv_cache, start_pos)
+
+        # raise ValueError(f"q: {q.shape}, k: {k.shape}, v: {v.shape}")
+        attn_weights = jnp.einsum("bqhd, bkhd -> bhqk", q, k) / jnp.sqrt(self.head_dim)
         if mask is not None:
             attn_weights = jnp.where(mask[:, None, None, :], attn_weights, -1e9)
 
         attn_weights = nnx.softmax(attn_weights, axis=-1)
         attn_weights = self.dropout(attn_weights, deterministic=deterministic)
 
-        attn_output = jnp.einsum("...hqk,...kd->...qhd", attn_weights, v)
+        attn_output = jnp.einsum("bhqk,bkhd->bqhd", attn_weights, v)
         attn_output = attn_output.reshape(x.shape[0], x.shape[1], -1)
 
-        return self.out_proj(attn_output)
+        output = self.out_proj(attn_output)
+
+        return output, updated_kv_cache
 
     def update_kv_cache(
         self,
         keys: jnp.ndarray,
         values: jnp.ndarray,
+        kv_cache: KVCache,
         start_pos: int,
-        seq_len: int,
-        batch: int,
-    ):
+    ) -> tuple[jnp.ndarray, jnp.ndarray, KVCache]:
         """Update the KV cache.
 
         Args:
             keys: The keys to update the cache with.
             values: The values to update the cache with.
+            kv_cache: The existing KVCache instance.
             start_pos: The start position of the input sequence.
-            seq_len: The length of the input sequence.
-            batch: The batch size.
 
         Returns:
-            The updated keys and values.
+            A tuple containing:
+                - The updated keys.
+                - The updated values.
+                - The updated KVCache instance.
         """
         # Update the kv cache with the new keys and values for the current sequence
-        self.cache_k = self.cache_k.at[:batch, start_pos : start_pos + seq_len].set(
-            keys
-        )
-        self.cache_v = self.cache_v.at[:batch, start_pos : start_pos + seq_len].set(
-            values
+        out_keys, out_values, updated_kv_cache = kv_cache.update(
+            xk=keys,
+            xv=values,
+            layer_idx=0,  # Assuming single layer; adjust if multi-layer
+            cur_pos=start_pos,
+            n_rep=1,  # Number of repetitions; adjust as needed
         )
 
-        # Return the updated keys and values
-        out_keys = self.cache_k[:batch, : start_pos + seq_len]
-        out_values = self.cache_v[:batch, : start_pos + seq_len]
-
-        return out_keys, out_values
+        return out_keys, out_values, updated_kv_cache
