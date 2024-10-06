@@ -4,6 +4,7 @@ import jax
 import jax.numpy as jnp
 from flax import nnx
 
+from scratch.deep_learning.layers.attention.kv_cache import KVCache
 from scratch.deep_learning.layers.attention.multi_head_attention import (
     MultiHeadAttention,
 )
@@ -16,7 +17,7 @@ def test_multi_head_attention_initialization():
     attention_layer = MultiHeadAttention(d_model, num_heads, rngs=nnx.Rngs(0))
     assert attention_layer.d_model == d_model
     assert attention_layer.num_heads == num_heads
-    assert attention_layer.d_head == d_model // num_heads
+    assert attention_layer.head_dim == d_model // num_heads
 
 
 def test_multi_head_attention_forward():
@@ -26,12 +27,10 @@ def test_multi_head_attention_forward():
     batch_size = 2
     seq_length = 10
 
-    query = jnp.ones((batch_size, seq_length, d_model))
-    key = jnp.ones((batch_size, seq_length, d_model))
-    value = jnp.ones((batch_size, seq_length, d_model))
+    x = jnp.ones((batch_size, seq_length, d_model))
 
     attention_layer = MultiHeadAttention(d_model, num_heads, rngs=nnx.Rngs(0))
-    output, _ = attention_layer(query, key, value)
+    output, _ = attention_layer(x)
 
     assert output.shape == (batch_size, seq_length, d_model)
 
@@ -43,41 +42,53 @@ def test_multi_head_attention_with_mask():
     batch_size = 2
     seq_length = 10
 
-    query = jnp.ones((batch_size, seq_length, d_model))
-    key = jnp.ones((batch_size, seq_length, d_model))
-    value = jnp.ones((batch_size, seq_length, d_model))
-    mask = jnp.array(
-        [[[False, True, True, True, True, True, True, True, True, True]] * seq_length]
-        * batch_size
-    )
+    x = jnp.ones((batch_size, seq_length, d_model))
+    mask = jnp.tril(jnp.ones((seq_length, seq_length)))
 
     attention_layer = MultiHeadAttention(d_model, num_heads, rngs=nnx.Rngs(0))
-    output, _ = attention_layer(query, key, value, mask)
+    output, _ = attention_layer(x, mask=mask)
 
     assert output.shape == (batch_size, seq_length, d_model)
 
 
-def test_attention_values_validity():
-    """Test if attention values are within the valid range [0, 1]."""
-    batch_size, seq_length, d_model, n_heads = 2, 16, 512, 8
+def test_multi_head_attention_with_kv_cache():
+    """Test MultiHeadAttention forward pass with KV cache."""
+    d_model = 128
+    num_heads = 8
+    batch_size = 2
+    seq_length = 10
 
-    # Random input tensor
-    x = jax.random.uniform(jax.random.PRNGKey(0), (batch_size, seq_length, d_model))
-    mask = jnp.zeros((batch_size, seq_length, seq_length))
-    mask = jnp.tril(mask)
+    x = jnp.ones((batch_size, seq_length, d_model))
+    kv_cache = KVCache.create(
+        1, batch_size, seq_length, num_heads, d_model // num_heads
+    )
 
-    # Initialize MultiHeadAttention layer
-    mha = MultiHeadAttention(d_model, n_heads, rngs=nnx.Rngs(0))
+    attention_layer = MultiHeadAttention(d_model, num_heads, rngs=nnx.Rngs(0))
+    output, new_kv_cache = attention_layer(x, start_pos=0, kv_cache=kv_cache)
 
-    # Forward pass
-    _, attention = mha(x, x, x, mask)
+    assert output.shape == (batch_size, seq_length, d_model)
+    assert new_kv_cache is not None
 
-    # Check attention values are within the valid range [0, 1]
-    assert jnp.all(attention >= 0), "Attention values must be non-negative."
-    assert jnp.all(attention <= 1), "Attention values must be less than or equal to 1."
 
-    # Check if the sum of the attention weights for each query across all keys is 1
-    attention_sum = attention.sum(axis=-1)
-    assert jnp.allclose(
-        attention_sum, jnp.ones_like(attention_sum)
-    ), "Sum of attention weights must be 1."
+def test_multi_head_attention_output_consistency():
+    """Test if MultiHeadAttention output is consistent with and without KV cache."""
+    d_model = 128
+    num_heads = 8
+    batch_size = 2
+    seq_length = 10
+
+    x = jax.random.normal(jax.random.PRNGKey(0), (batch_size, seq_length, d_model))
+
+    attention_layer = MultiHeadAttention(d_model, num_heads, rngs=nnx.Rngs(0))
+
+    # Output without KV cache
+    output_without_cache, _ = attention_layer(x)
+
+    # Output with KV cache
+    kv_cache = KVCache.create(
+        1, batch_size, seq_length, num_heads, d_model // num_heads
+    )
+    output_with_cache, _ = attention_layer(x, start_pos=0, kv_cache=kv_cache)
+
+    # Check if outputs are close
+    assert jnp.allclose(output_without_cache, output_with_cache, atol=1e-5)
