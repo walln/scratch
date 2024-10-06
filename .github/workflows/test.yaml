@@ -28,6 +28,6 @@ jobs:
               run: uvx mypy src --enable-incomplete-feature=NewGenericSyntax
 
             - name: Test
-              run: uv test
+              run: uv run pytest tests
 
 
