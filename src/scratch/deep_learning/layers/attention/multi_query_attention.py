@@ -14,6 +14,9 @@ import jax.numpy as jnp
 from flax import nnx
 
 from scratch.deep_learning.layers.attention.kv_cache import LayerKVCache
+from scratch.deep_learning.layers.attention.sliding_window import (
+    create_sliding_window_mask,
+)
 
 
 # TODO(walln): Add support for RoPE
@@ -30,6 +33,7 @@ class MultiQueryAttention(nnx.Module):
         n_heads: int,
         dropout_rate=0.1,
         *,
+        sliding_window_size: int | None = None,
         rngs: nnx.Rngs,
     ):
         """Initializes the MultiQueryAttention module.
@@ -38,6 +42,8 @@ class MultiQueryAttention(nnx.Module):
             d_model: The dimension of the input embeddings.
             n_heads: The number of attention heads.
             dropout_rate: The dropout rate for regularization.
+            sliding_window_size: The size of the sliding window for the sliding window
+                attention mechanism. Defaults to None.
             rngs: Random number generators for initializing parameters.
         """
         self.n_heads = n_heads
@@ -45,6 +51,8 @@ class MultiQueryAttention(nnx.Module):
         self.d_model = d_model
 
         assert d_model % n_heads == 0, "d_model must be divisible by n_heads"
+
+        self.sliding_window_size = sliding_window_size
 
         self.q_proj = nnx.Linear(d_model, d_model, rngs=rngs)
         self.k_proj = nnx.Linear(d_model, self.head_dim, rngs=rngs)
@@ -76,6 +84,8 @@ class MultiQueryAttention(nnx.Module):
         Returns:
             Tuple of tensor (batch_size, seq_length, d_model) and updated KVCache.
         """
+        batch, seq_len, _ = x.shape
+
         q = self.q_proj(x)  # Shape (batch_size, seq_length, d_model)
         k = self.k_proj(x)  # Shape (batch_size, seq_length, head_dim)
         v = self.v_proj(x)  # Shape (batch_size, seq_length, head_dim)
@@ -96,10 +106,17 @@ class MultiQueryAttention(nnx.Module):
                 n_rep=self.n_heads,
             )
 
-        # raise ValueError(f"q: {q.shape}, k: {k.shape}, v: {v.shape}")
         attn_weights = jnp.einsum("bqhd, bkhd -> bhqk", q, k) / jnp.sqrt(self.head_dim)
         if mask is not None:
             attn_weights = jnp.where(mask[:, None, None, :], attn_weights, -1e9)
+
+        if self.sliding_window_size is not None:
+            sliding_mask = create_sliding_window_mask(
+                seq_len=seq_len,
+                window_size=self.sliding_window_size,
+                dtype=attn_weights.dtype,
+            )
+            attn_weights = jnp.where(sliding_mask, attn_weights, -1e9)
 
         attn_weights = nnx.softmax(attn_weights, axis=-1)
         attn_weights = self.dropout(attn_weights, deterministic=deterministic)

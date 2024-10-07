@@ -14,23 +14,35 @@ import jax.numpy as jnp
 from flax import nnx
 
 from scratch.deep_learning.layers.attention.kv_cache import LayerKVCache
+from scratch.deep_learning.layers.attention.sliding_window import (
+    create_sliding_window_mask,
+)
 
 
 class MultiHeadAttention(nnx.Module):
     """Multi-head attention layer."""
 
-    def __init__(self, d_model: int, num_heads: int, *, rngs: nnx.Rngs):
+    def __init__(
+        self,
+        d_model: int,
+        num_heads: int,
+        *,
+        sliding_window_size: int | None = None,
+        rngs: nnx.Rngs,
+    ):
         """Initialize MultiHeadAttention.
 
         Args:
             d_model: The dimension of the model.
             num_heads: The number of attention heads.
+            sliding_window_size: The size of the sliding window. Defaults to None.
             rngs: The random number generators.
         """
         assert d_model % num_heads == 0, "d_model must be divisible by num_heads"
         self.d_model = d_model
         self.num_heads = num_heads
         self.head_dim = d_model // num_heads
+        self.sliding_window_size = sliding_window_size
 
         # Linear layers for query, key, value, and output
         self.w_q = nnx.Linear(d_model, d_model, use_bias=False, rngs=rngs)
@@ -95,6 +107,17 @@ class MultiHeadAttention(nnx.Module):
         if mask is not None:
             assert mask.ndim == 2, f"Mask must be 2D, got {mask.ndim}D"
             scores = scores + mask[None, None, :, :]
+
+        if self.sliding_window_size is not None:
+            sliding_mask = create_sliding_window_mask(
+                seq_len=seq_len,
+                window_size=self.sliding_window_size,
+                dtype=scores.dtype,
+            )
+            scores = jnp.where(
+                sliding_mask, scores, -1e9
+            )  # Mask out positions outside the sliding window
+
         scores = jax.nn.softmax(scores, axis=-1).astype(xq.dtype)
 
         output = scores @ values
