@@ -39,6 +39,10 @@ def test_output_shape():
     output, _ = gqa_module(x, freqs_complex=freqs_complex)
     assert output.shape == (batch_size, seq_len, d_model)
 
+    # Test without RoPE
+    output_no_rope, _ = gqa_module(x)
+    assert output_no_rope.shape == (batch_size, seq_len, d_model)
+
 
 def test_kv_cache_update():
     """Test that the KV cache is updated correctly."""
@@ -61,6 +65,12 @@ def test_kv_cache_update():
     assert jnp.any(new_kv_cache.k != 0)
     assert jnp.any(new_kv_cache.v != 0)
 
+    # Test without RoPE
+    _, new_kv_cache_no_rope = gqa_module(x, kv_cache=kv_cache)
+    assert new_kv_cache_no_rope is not None
+    assert jnp.any(new_kv_cache_no_rope.k != 0)
+    assert jnp.any(new_kv_cache_no_rope.v != 0)
+
 
 def test_no_kv_cache():
     """Test that the KV cache is not used when not provided."""
@@ -80,6 +90,11 @@ def test_no_kv_cache():
     output, kv_cache = gqa_module(x, freqs_complex=freqs_complex)
     assert output.shape == (batch_size, seq_len, d_model)
     assert kv_cache is None
+
+    # Test without RoPE
+    output_no_rope, kv_cache_no_rope = gqa_module(x)
+    assert output_no_rope.shape == (batch_size, seq_len, d_model)
+    assert kv_cache_no_rope is None
 
 
 @pytest.mark.parametrize(
@@ -102,6 +117,10 @@ def test_different_head_configurations(d_model: int, n_heads: int, n_kv_heads: i
 
     output, _ = gqa_module(x, freqs_complex=freqs_complex)
     assert output.shape == (batch_size, seq_len, d_model)
+
+    # Test without RoPE
+    output_no_rope, _ = gqa_module(x)
+    assert output_no_rope.shape == (batch_size, seq_len, d_model)
 
 
 @pytest.mark.parametrize(
@@ -147,6 +166,19 @@ def test_forward_backward():
     shape_check = jax.tree_util.tree_map(lambda p, g: p.shape == g.shape, params, grads)
     assert jax.tree_util.tree_all(shape_check), f"Shapes don't match: {shape_check}"
 
+    def loss_fn_no_rope(model):
+        output, _ = model(x)
+        return jnp.mean(output**2)
+
+    loss_no_rope, grads_no_rope = nnx.value_and_grad(loss_fn_no_rope)(gqa_module)
+
+    shape_check_no_rope = jax.tree_util.tree_map(
+        lambda p, g: p.shape == g.shape, params, grads_no_rope
+    )
+    assert jax.tree_util.tree_all(
+        shape_check_no_rope
+    ), f"Shapes don't match without RoPE: {shape_check_no_rope}"
+
 
 @pytest.mark.parametrize("start_pos", [0, 8, 16])
 def test_incremental_forward(start_pos):
@@ -174,6 +206,14 @@ def test_incremental_forward(start_pos):
     assert new_kv_cache is not None
     assert jnp.any(new_kv_cache.k[:, :, start_pos : start_pos + seq_len] != 0)
 
+    # Test without RoPE
+    output_no_rope, new_kv_cache_no_rope = gqa_module(
+        x, start_pos=start_pos, kv_cache=kv_cache
+    )
+    assert output_no_rope.shape == (batch_size, seq_len, d_model)
+    assert new_kv_cache_no_rope is not None
+    assert jnp.any(new_kv_cache_no_rope.k[:, :, start_pos : start_pos + seq_len] != 0)
+
 
 def test_numerical_stability():
     """Test that the grouped query attention module is numerically stable."""
@@ -193,3 +233,8 @@ def test_numerical_stability():
     output, _ = gqa_module(x, freqs_complex=freqs_complex)
     assert not jnp.any(jnp.isnan(output))
     assert not jnp.any(jnp.isinf(output))
+
+    # Test without RoPE
+    output_no_rope, _ = gqa_module(x)
+    assert not jnp.any(jnp.isnan(output_no_rope))
+    assert not jnp.any(jnp.isinf(output_no_rope))
