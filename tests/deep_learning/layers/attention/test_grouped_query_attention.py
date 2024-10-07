@@ -8,7 +8,7 @@ from flax import nnx
 from scratch.deep_learning.layers.attention.grouped_query_attention import (
     GroupedQueryAttention,
 )
-from scratch.deep_learning.layers.attention.kv_cache import KVCache
+from scratch.deep_learning.layers.attention.kv_cache import LayerKVCache
 
 
 def create_gqa_module(d_model, n_heads, n_kv_heads, rngs=None):
@@ -59,7 +59,7 @@ def test_kv_cache_update():
         d_model // n_heads, seq_len * 2
     )[:seq_len]
 
-    kv_cache = KVCache.create(1, batch_size, seq_len, n_kv_heads, d_model // n_heads)
+    kv_cache = LayerKVCache.create(batch_size, seq_len, n_kv_heads, d_model // n_heads)
     _, new_kv_cache = gqa_module(x, freqs_complex=freqs_complex, kv_cache=kv_cache)
     assert new_kv_cache is not None
     assert jnp.any(new_kv_cache.k != 0)
@@ -196,15 +196,15 @@ def test_incremental_forward(start_pos):
         d_model // n_heads, (start_pos + seq_len) * 2
     )[start_pos : start_pos + seq_len]
 
-    kv_cache = KVCache.create(
-        1, batch_size, start_pos + seq_len, n_kv_heads, d_model // n_heads
+    kv_cache = LayerKVCache.create(
+        batch_size, start_pos + seq_len, n_kv_heads, d_model // n_heads
     )
     output, new_kv_cache = gqa_module(
         x, freqs_complex=freqs_complex, start_pos=start_pos, kv_cache=kv_cache
     )
     assert output.shape == (batch_size, seq_len, d_model)
     assert new_kv_cache is not None
-    assert jnp.any(new_kv_cache.k[:, :, start_pos : start_pos + seq_len] != 0)
+    assert jnp.any(new_kv_cache.k[:, start_pos : start_pos + seq_len] != 0)
 
     # Test without RoPE
     output_no_rope, new_kv_cache_no_rope = gqa_module(
@@ -212,7 +212,7 @@ def test_incremental_forward(start_pos):
     )
     assert output_no_rope.shape == (batch_size, seq_len, d_model)
     assert new_kv_cache_no_rope is not None
-    assert jnp.any(new_kv_cache_no_rope.k[:, :, start_pos : start_pos + seq_len] != 0)
+    assert jnp.any(new_kv_cache_no_rope.k[:, start_pos : start_pos + seq_len] != 0)
 
 
 def test_numerical_stability():

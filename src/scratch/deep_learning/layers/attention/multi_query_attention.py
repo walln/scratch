@@ -13,7 +13,7 @@ Reference:
 import jax.numpy as jnp
 from flax import nnx
 
-from scratch.deep_learning.layers.attention.kv_cache import KVCache
+from scratch.deep_learning.layers.attention.kv_cache import LayerKVCache
 
 
 # TODO(walln): Add support for RoPE
@@ -59,7 +59,7 @@ class MultiQueryAttention(nnx.Module):
         mask=None,
         deterministic=True,
         start_pos=0,
-        kv_cache: KVCache | None = None,
+        kv_cache: LayerKVCache | None = None,
     ):
         """Applies the multi-query attention mechanism.
 
@@ -92,7 +92,6 @@ class MultiQueryAttention(nnx.Module):
             k, v, updated_kv_cache = kv_cache.update(
                 xk=k,
                 xv=v,
-                layer_idx=0,  # TODO(walln): Add support for multi-layer KV cache
                 cur_pos=start_pos,
                 n_rep=self.n_heads,
             )

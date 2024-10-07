@@ -28,7 +28,7 @@ from flax import nnx
 from scratch.deep_learning.layers.attention.grouped_query_attention import (
     GroupedQueryAttention,
 )
-from scratch.deep_learning.layers.attention.kv_cache import KVCache
+from scratch.deep_learning.layers.attention.kv_cache import KVCache, LayerKVCache
 
 
 @dataclass
@@ -147,8 +147,8 @@ class LLama3TransformerBlock(nnx.Module):
         start_pos: int,
         freqs_complex: jnp.ndarray,
         mask: jnp.ndarray | None = None,
-        kv_cache: KVCache | None = None,
-    ) -> tuple[jnp.ndarray, KVCache | None]:
+        kv_cache: LayerKVCache | None = None,
+    ) -> tuple[jnp.ndarray, LayerKVCache | None]:
         """Compute the transformer block forward pass.
 
         Args:
@@ -210,8 +210,8 @@ class LLama3(nnx.Module):
         self,
         x: jnp.ndarray,
         start_pos: int,
-        kv_cache: list[KVCache] | None = None,
-    ) -> tuple[jnp.ndarray, list[KVCache | None]]:
+        kv_cache: KVCache | None = None,
+    ) -> tuple[jnp.ndarray, KVCache | None]:
         """Compute the LLama 3 forward pass.
 
         Args:
@@ -222,7 +222,7 @@ class LLama3(nnx.Module):
         Returns:
             The output tensor and the updated KV cache for each layer.
         """
-        batch, seq_len = x.shape
+        _, seq_len = x.shape
         h = self.tok_embeddings(x)
         freqs_complex = self.freqs_complex[start_pos : start_pos + seq_len]
 
@@ -232,7 +232,6 @@ class LLama3(nnx.Module):
             mask = jnp.triu(mask, k=1)
             mask = jnp.hstack([jnp.zeros((seq_len, start_pos)), mask]).astype(h.dtype)
 
-        new_kv_cache = []
         for i, layer in enumerate(self.layers):
             layer_kv_cache = kv_cache[i] if kv_cache is not None else None
             h, new_layer_kv_cache = layer(
@@ -242,11 +241,12 @@ class LLama3(nnx.Module):
                 mask=mask,
                 kv_cache=layer_kv_cache,
             )
-            new_kv_cache.append(new_layer_kv_cache)
+            if kv_cache is not None and new_layer_kv_cache is not None:
+                kv_cache[i] = new_layer_kv_cache
 
         h = self.norm(h)
         output = self.output(h).astype(jnp.float32)
-        return output, new_kv_cache
+        return output, kv_cache
 
 
 if __name__ == "__main__":
@@ -259,16 +259,13 @@ if __name__ == "__main__":
         max_batch_size=2,
     )
     model = LLama3(config, rngs=nnx.Rngs(0))
-    kv_caches = [
-        KVCache.create(
-            config.n_layers,
-            config.max_batch_size,
-            config.max_seq_len,
-            config.n_heads,
-            config.d_model,
-        )
-        for _ in range(config.n_layers)
-    ]
+    kv_cache = KVCache.create(
+        num_layers=config.n_layers,
+        bsz=config.max_batch_size,
+        max_seq_len=config.max_seq_len,
+        kv_heads=config.n_heads,
+        head_dim=config.d_model // config.n_heads,
+    )
     x = jnp.ones((1, config.max_seq_len), dtype=jnp.int32)
-    y, _ = model(x, 0, kv_caches)
+    y, _ = model(x, 0, kv_cache)
     print(y.shape)

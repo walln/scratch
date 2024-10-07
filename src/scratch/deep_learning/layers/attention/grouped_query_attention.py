@@ -21,7 +21,7 @@ import jax
 import jax.numpy as jnp
 from flax import nnx
 
-from scratch.deep_learning.layers.attention.kv_cache import KVCache
+from scratch.deep_learning.layers.attention.kv_cache import LayerKVCache
 
 
 class GroupedQueryAttention(nnx.Module):
@@ -70,8 +70,8 @@ class GroupedQueryAttention(nnx.Module):
         freqs_complex: jnp.ndarray | None = None,
         start_pos: int = 0,
         mask: jnp.ndarray | None = None,
-        kv_cache: KVCache | None = None,
-    ):
+        kv_cache: LayerKVCache | None = None,
+    ) -> tuple[jnp.ndarray, LayerKVCache | None]:
         """Compute the grouped query attention.
 
         Args:
@@ -106,7 +106,6 @@ class GroupedQueryAttention(nnx.Module):
             keys, values, new_kv_cache = kv_cache.update(
                 xk=xk,
                 xv=xv,
-                layer_idx=0,  # TODO(walln): Add support for multi-layer KV cache
                 cur_pos=start_pos,
                 n_rep=self.n_rep,
             )
