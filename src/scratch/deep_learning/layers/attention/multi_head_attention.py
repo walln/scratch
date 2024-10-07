@@ -14,6 +14,7 @@ import jax.numpy as jnp
 from flax import nnx
 
 from scratch.deep_learning.layers.attention.kv_cache import LayerKVCache
+from scratch.deep_learning.layers.attention.rope import apply_rotary_emb
 from scratch.deep_learning.layers.attention.sliding_window import (
     create_sliding_window_mask,
 )
@@ -54,6 +55,7 @@ class MultiHeadAttention(nnx.Module):
         self,
         x: jnp.ndarray,
         *,
+        freqs_complex: jnp.ndarray | None = None,
         start_pos: int = 0,
         mask: jnp.ndarray | None = None,
         kv_cache: LayerKVCache | None = None,
@@ -62,6 +64,7 @@ class MultiHeadAttention(nnx.Module):
 
         Args:
             x: The input tensor.
+            freqs_complex: The frequencies for RoPE embeddings. Defaults to None.
             start_pos: The start position of the input sequence. Used only if
               kv_cache is provided.
             mask: The mask tensor. Defaults to None.
@@ -81,6 +84,10 @@ class MultiHeadAttention(nnx.Module):
         xq = xq.reshape(batch, seq_len, self.num_heads, self.head_dim)
         xk = xk.reshape(batch, seq_len, self.num_heads, self.head_dim)
         xv = xv.reshape(batch, seq_len, self.num_heads, self.head_dim)
+
+        # Apply rotary embeddings to the query and key projections
+        if freqs_complex is not None:
+            xq, xk = apply_rotary_emb(xq, xk, freqs_complex)
 
         # Handle KV cache if provided
         if kv_cache is not None:
