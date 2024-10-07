@@ -5,6 +5,7 @@ import jax.numpy as jnp
 import pytest
 from flax import nnx
 
+from scratch.deep_learning.layers.attention import rope
 from scratch.deep_learning.layers.attention.grouped_query_attention import (
     GroupedQueryAttention,
 )
@@ -32,9 +33,9 @@ def test_output_shape():
         n_kv_heads=n_kv_heads,
     )
     x = jax.random.normal(jax.random.PRNGKey(0), (batch_size, seq_len, d_model))
-    freqs_complex = GroupedQueryAttention.precompute_theta_pos_freqs(
-        d_model // n_heads, seq_len * 2
-    )[:seq_len]
+    freqs_complex = rope.precompute_theta_pos_freqs(d_model // n_heads, seq_len * 2)[
+        :seq_len
+    ]
 
     output, _ = gqa_module(x, freqs_complex=freqs_complex)
     assert output.shape == (batch_size, seq_len, d_model)
@@ -55,9 +56,9 @@ def test_kv_cache_update():
         n_kv_heads=n_kv_heads,
     )
     x = jax.random.normal(jax.random.PRNGKey(0), (batch_size, seq_len, d_model))
-    freqs_complex = GroupedQueryAttention.precompute_theta_pos_freqs(
-        d_model // n_heads, seq_len * 2
-    )[:seq_len]
+    freqs_complex = rope.precompute_theta_pos_freqs(d_model // n_heads, seq_len * 2)[
+        :seq_len
+    ]
 
     kv_cache = LayerKVCache.create(batch_size, seq_len, n_kv_heads, d_model // n_heads)
     _, new_kv_cache = gqa_module(x, freqs_complex=freqs_complex, kv_cache=kv_cache)
@@ -83,9 +84,9 @@ def test_no_kv_cache():
         n_kv_heads=n_kv_heads,
     )
     x = jax.random.normal(jax.random.PRNGKey(0), (batch_size, seq_len, d_model))
-    freqs_complex = GroupedQueryAttention.precompute_theta_pos_freqs(
-        d_model // n_heads, seq_len * 2
-    )[:seq_len]
+    freqs_complex = rope.precompute_theta_pos_freqs(d_model // n_heads, seq_len * 2)[
+        :seq_len
+    ]
 
     output, kv_cache = gqa_module(x, freqs_complex=freqs_complex)
     assert output.shape == (batch_size, seq_len, d_model)
@@ -111,9 +112,9 @@ def test_different_head_configurations(d_model: int, n_heads: int, n_kv_heads: i
         n_kv_heads=n_kv_heads,
     )
     x = jax.random.normal(jax.random.PRNGKey(0), (batch_size, seq_len, d_model))
-    freqs_complex = GroupedQueryAttention.precompute_theta_pos_freqs(
-        d_model // n_heads, seq_len * 2
-    )[:seq_len]
+    freqs_complex = rope.precompute_theta_pos_freqs(d_model // n_heads, seq_len * 2)[
+        :seq_len
+    ]
 
     output, _ = gqa_module(x, freqs_complex=freqs_complex)
     assert output.shape == (batch_size, seq_len, d_model)
@@ -152,9 +153,9 @@ def test_forward_backward():
         n_kv_heads=n_kv_heads,
     )
     x = jax.random.normal(jax.random.PRNGKey(0), (batch_size, seq_len, d_model))
-    freqs_complex = GroupedQueryAttention.precompute_theta_pos_freqs(
-        d_model // n_heads, seq_len * 2
-    )[:seq_len]
+    freqs_complex = rope.precompute_theta_pos_freqs(d_model // n_heads, seq_len * 2)[
+        :seq_len
+    ]
 
     def loss_fn(model):
         output, _ = model(x, freqs_complex=freqs_complex)
@@ -192,7 +193,7 @@ def test_incremental_forward(start_pos):
         n_kv_heads=n_kv_heads,
     )
     x = jax.random.normal(jax.random.PRNGKey(0), (batch_size, seq_len, d_model))
-    freqs_complex = GroupedQueryAttention.precompute_theta_pos_freqs(
+    freqs_complex = rope.precompute_theta_pos_freqs(
         d_model // n_heads, (start_pos + seq_len) * 2
     )[start_pos : start_pos + seq_len]
 
@@ -226,9 +227,9 @@ def test_numerical_stability():
         n_kv_heads=n_kv_heads,
     )
     x = jax.random.normal(jax.random.PRNGKey(0), (batch_size, seq_len, d_model))
-    freqs_complex = GroupedQueryAttention.precompute_theta_pos_freqs(
-        d_model // n_heads, seq_len * 2
-    )[:seq_len]
+    freqs_complex = rope.precompute_theta_pos_freqs(d_model // n_heads, seq_len * 2)[
+        :seq_len
+    ]
 
     output, _ = gqa_module(x, freqs_complex=freqs_complex)
     assert not jnp.any(jnp.isnan(output))

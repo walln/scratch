@@ -25,6 +25,7 @@ import jax
 import jax.numpy as jnp
 from flax import nnx
 
+from scratch.deep_learning.layers.attention import rope
 from scratch.deep_learning.layers.attention.grouped_query_attention import (
     GroupedQueryAttention,
 )
@@ -202,7 +203,7 @@ class LLama3(nnx.Module):
             config.d_model, config.vocab_size, use_bias=False, rngs=rngs
         )
 
-        self.freqs_complex = GroupedQueryAttention.precompute_theta_pos_freqs(
+        self.freqs_complex = rope.precompute_theta_pos_freqs(
             config.d_model // config.n_heads, config.max_seq_len * 2, config.rope_theta
         )
 
