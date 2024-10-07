@@ -37,8 +37,9 @@ def test_output_shape():
         :seq_len
     ]
 
-    output, _ = gqa_module(x, freqs_complex=freqs_complex)
-    assert output.shape == (batch_size, seq_len, d_model)
+    # Test with RoPE
+    output_rope, _ = gqa_module(x, freqs_complex=freqs_complex)
+    assert output_rope.shape == (batch_size, seq_len, d_model)
 
     # Test without RoPE
     output_no_rope, _ = gqa_module(x)
@@ -61,10 +62,12 @@ def test_kv_cache_update():
     ]
 
     kv_cache = LayerKVCache.create(batch_size, seq_len, n_kv_heads, d_model // n_heads)
-    _, new_kv_cache = gqa_module(x, freqs_complex=freqs_complex, kv_cache=kv_cache)
-    assert new_kv_cache is not None
-    assert jnp.any(new_kv_cache.k != 0)
-    assert jnp.any(new_kv_cache.v != 0)
+
+    # Test with RoPE
+    _, new_kv_cache_rope = gqa_module(x, freqs_complex=freqs_complex, kv_cache=kv_cache)
+    assert new_kv_cache_rope is not None
+    assert jnp.any(new_kv_cache_rope.k != 0)
+    assert jnp.any(new_kv_cache_rope.v != 0)
 
     # Test without RoPE
     _, new_kv_cache_no_rope = gqa_module(x, kv_cache=kv_cache)
@@ -88,9 +91,10 @@ def test_no_kv_cache():
         :seq_len
     ]
 
-    output, kv_cache = gqa_module(x, freqs_complex=freqs_complex)
-    assert output.shape == (batch_size, seq_len, d_model)
-    assert kv_cache is None
+    # Test with RoPE
+    output_rope, kv_cache_rope = gqa_module(x, freqs_complex=freqs_complex)
+    assert output_rope.shape == (batch_size, seq_len, d_model)
+    assert kv_cache_rope is None
 
     # Test without RoPE
     output_no_rope, kv_cache_no_rope = gqa_module(x)
@@ -116,8 +120,9 @@ def test_different_head_configurations(d_model: int, n_heads: int, n_kv_heads: i
         :seq_len
     ]
 
-    output, _ = gqa_module(x, freqs_complex=freqs_complex)
-    assert output.shape == (batch_size, seq_len, d_model)
+    # Test with RoPE
+    output_rope, _ = gqa_module(x, freqs_complex=freqs_complex)
+    assert output_rope.shape == (batch_size, seq_len, d_model)
 
     # Test without RoPE
     output_no_rope, _ = gqa_module(x)
@@ -157,16 +162,22 @@ def test_forward_backward():
         :seq_len
     ]
 
-    def loss_fn(model):
+    # Test with RoPE
+    def loss_fn_rope(model):
         output, _ = model(x, freqs_complex=freqs_complex)
         return jnp.mean(output**2)
 
-    loss, grads = nnx.value_and_grad(loss_fn)(gqa_module)
+    loss_rope, grads_rope = nnx.value_and_grad(loss_fn_rope)(gqa_module)
 
     graphdef, params = nnx.split(gqa_module, nnx.Param)
-    shape_check = jax.tree_util.tree_map(lambda p, g: p.shape == g.shape, params, grads)
-    assert jax.tree_util.tree_all(shape_check), f"Shapes don't match: {shape_check}"
+    shape_check_rope = jax.tree_util.tree_map(
+        lambda p, g: p.shape == g.shape, params, grads_rope
+    )
+    assert jax.tree_util.tree_all(
+        shape_check_rope
+    ), f"Shapes don't match with RoPE: {shape_check_rope}"
 
+    # Test without RoPE
     def loss_fn_no_rope(model):
         output, _ = model(x)
         return jnp.mean(output**2)
@@ -200,12 +211,14 @@ def test_incremental_forward(start_pos):
     kv_cache = LayerKVCache.create(
         batch_size, start_pos + seq_len, n_kv_heads, d_model // n_heads
     )
-    output, new_kv_cache = gqa_module(
+
+    # Test with RoPE
+    output_rope, new_kv_cache_rope = gqa_module(
         x, freqs_complex=freqs_complex, start_pos=start_pos, kv_cache=kv_cache
     )
-    assert output.shape == (batch_size, seq_len, d_model)
-    assert new_kv_cache is not None
-    assert jnp.any(new_kv_cache.k[:, start_pos : start_pos + seq_len] != 0)
+    assert output_rope.shape == (batch_size, seq_len, d_model)
+    assert new_kv_cache_rope is not None
+    assert jnp.any(new_kv_cache_rope.k[:, start_pos : start_pos + seq_len] != 0)
 
     # Test without RoPE
     output_no_rope, new_kv_cache_no_rope = gqa_module(
@@ -231,9 +244,10 @@ def test_numerical_stability():
         :seq_len
     ]
 
-    output, _ = gqa_module(x, freqs_complex=freqs_complex)
-    assert not jnp.any(jnp.isnan(output))
-    assert not jnp.any(jnp.isinf(output))
+    # Test with RoPE
+    output_rope, _ = gqa_module(x, freqs_complex=freqs_complex)
+    assert not jnp.any(jnp.isnan(output_rope))
+    assert not jnp.any(jnp.isinf(output_rope))
 
     # Test without RoPE
     output_no_rope, _ = gqa_module(x)
@@ -251,6 +265,9 @@ def test_sliding_window_attention():
     window_size = seq_length
 
     x = jax.random.normal(jax.random.PRNGKey(0), (batch_size, seq_length, d_model))
+    freqs_complex = rope.precompute_theta_pos_freqs(
+        d_model // num_heads, seq_length * 2
+    )[:seq_length]
 
     attention_layer = GroupedQueryAttention(
         d_model,
@@ -259,9 +276,14 @@ def test_sliding_window_attention():
         sliding_window_size=window_size,
         rngs=nnx.Rngs(0),
     )
-    output, _ = attention_layer(x)
 
-    assert output.shape == (batch_size, seq_length, d_model)
+    # Test with RoPE
+    output_rope, _ = attention_layer(x, freqs_complex=freqs_complex)
+    assert output_rope.shape == (batch_size, seq_length, d_model)
+
+    # Test without RoPE
+    output_no_rope, _ = attention_layer(x)
+    assert output_no_rope.shape == (batch_size, seq_length, d_model)
 
     sliding_window_attention_layer = GroupedQueryAttention(
         d_model,
@@ -270,11 +292,18 @@ def test_sliding_window_attention():
         sliding_window_size=window_size,
         rngs=nnx.Rngs(0),
     )
-    sliding_output, _ = sliding_window_attention_layer(x)
 
-    assert sliding_output.shape == (batch_size, seq_length, d_model)
+    # Test with RoPE
+    sliding_output_rope, _ = sliding_window_attention_layer(
+        x, freqs_complex=freqs_complex
+    )
+    assert sliding_output_rope.shape == (batch_size, seq_length, d_model)
+    assert jnp.allclose(output_rope, sliding_output_rope, atol=1e-5)
 
-    assert jnp.allclose(output, sliding_output, atol=1e-5)
+    # Test without RoPE
+    sliding_output_no_rope, _ = sliding_window_attention_layer(x)
+    assert sliding_output_no_rope.shape == (batch_size, seq_length, d_model)
+    assert jnp.allclose(output_no_rope, sliding_output_no_rope, atol=1e-5)
 
 
 def test_grouped_query_attention_sliding_window_consistency():
@@ -289,12 +318,22 @@ def test_grouped_query_attention_sliding_window_consistency():
     )
 
     x = jax.random.normal(jax.random.PRNGKey(0), (batch_size, seq_length, d_model))
+    freqs_complex = rope.precompute_theta_pos_freqs(
+        d_model // num_heads, seq_length * 2
+    )[:seq_length]
 
     # Attention layer without sliding window
     attention_layer_without_window = GroupedQueryAttention(
         d_model, num_heads, n_kv_heads=num_kv_heads, rngs=nnx.Rngs(0)
     )
-    output_without_window, _ = attention_layer_without_window(x)
+
+    # Test with RoPE
+    output_without_window_rope, _ = attention_layer_without_window(
+        x, freqs_complex=freqs_complex
+    )
+
+    # Test without RoPE
+    output_without_window_no_rope, _ = attention_layer_without_window(x)
 
     # Attention layer with sliding window
     attention_layer_with_window = GroupedQueryAttention(
@@ -304,7 +343,17 @@ def test_grouped_query_attention_sliding_window_consistency():
         sliding_window_size=window_size,
         rngs=nnx.Rngs(0),
     )
-    output_with_window, _ = attention_layer_with_window(x)
 
-    # Check if outputs are close
-    assert jnp.allclose(output_without_window, output_with_window, atol=1e-5)
+    # Test with RoPE
+    output_with_window_rope, _ = attention_layer_with_window(
+        x, freqs_complex=freqs_complex
+    )
+
+    # Test without RoPE
+    output_with_window_no_rope, _ = attention_layer_with_window(x)
+
+    # Check if outputs are close for both RoPE and non-RoPE cases
+    assert jnp.allclose(output_without_window_rope, output_with_window_rope, atol=1e-5)
+    assert jnp.allclose(
+        output_without_window_no_rope, output_with_window_no_rope, atol=1e-5
+    )
