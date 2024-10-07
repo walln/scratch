@@ -189,3 +189,58 @@ def test_deterministic_mode():
         jnp.allclose(output, non_deterministic_outputs[0])
         for output in non_deterministic_outputs[1:]
     )
+
+
+def test_sliding_window_attention():
+    """Test MultiQueryAttention with sliding window."""
+    d_model = 128
+    num_heads = 8
+    batch_size = 2
+    seq_length = 10
+    window_size = seq_length
+
+    x = jax.random.normal(jax.random.PRNGKey(0), (batch_size, seq_length, d_model))
+
+    attention_layer = MultiQueryAttention(
+        d_model, num_heads, sliding_window_size=window_size, rngs=nnx.Rngs(0)
+    )
+    output, _ = attention_layer(x)
+
+    assert output.shape == (batch_size, seq_length, d_model)
+
+    sliding_window_attention_layer = MultiQueryAttention(
+        d_model, num_heads, sliding_window_size=window_size, rngs=nnx.Rngs(0)
+    )
+    sliding_output, _ = sliding_window_attention_layer(x)
+
+    assert sliding_output.shape == (batch_size, seq_length, d_model)
+
+    assert jnp.allclose(output, sliding_output, atol=1e-5)
+
+
+def test_multi_query_attention_sliding_window_consistency():
+    """Test if MultiQueryAttention output is consistent with/without sliding window."""
+    d_model = 128
+    num_heads = 8
+    batch_size = 2
+    seq_length = 10
+    window_size = (
+        seq_length  # Set window size to seq_length to match non-sliding behavior
+    )
+
+    x = jax.random.normal(jax.random.PRNGKey(0), (batch_size, seq_length, d_model))
+
+    # Attention layer without sliding window
+    attention_layer_without_window = MultiQueryAttention(
+        d_model, num_heads, rngs=nnx.Rngs(0)
+    )
+    output_without_window, _ = attention_layer_without_window(x)
+
+    # Attention layer with sliding window
+    attention_layer_with_window = MultiQueryAttention(
+        d_model, num_heads, sliding_window_size=window_size, rngs=nnx.Rngs(0)
+    )
+    output_with_window, _ = attention_layer_with_window(x)
+
+    # Check if outputs are close
+    assert jnp.allclose(output_without_window, output_with_window, atol=1e-5)

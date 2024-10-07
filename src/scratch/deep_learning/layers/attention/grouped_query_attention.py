@@ -22,6 +22,9 @@ import jax.numpy as jnp
 from flax import nnx
 
 from scratch.deep_learning.layers.attention.kv_cache import LayerKVCache
+from scratch.deep_learning.layers.attention.sliding_window import (
+    create_sliding_window_mask,
+)
 
 
 class GroupedQueryAttention(nnx.Module):
@@ -34,6 +37,7 @@ class GroupedQueryAttention(nnx.Module):
         n_kv_heads: int | None = None,
         n_q_heads: int | None = None,
         *,
+        sliding_window_size: int | None = None,
         rngs: nnx.Rngs,
     ):
         """Initialize the Llama 2 attention module.
@@ -43,6 +47,7 @@ class GroupedQueryAttention(nnx.Module):
             n_heads: The number of attention heads.
             n_kv_heads: The number of key and value heads. Defaults to `n_heads`.
             n_q_heads: The number of query heads. Defaults to `n_heads`.
+            sliding_window_size: The size of the sliding window. Defaults to None.
             rngs: The random number generators.
         """
         n_q_heads = n_heads if n_q_heads is None else n_q_heads
@@ -57,6 +62,8 @@ class GroupedQueryAttention(nnx.Module):
         self.n_kv_heads = n_kv_heads
         self.n_rep = n_rep
         self.head_dim = head_dim
+
+        self.sliding_window_size = sliding_window_size
 
         self.w_q = nnx.Linear(d_model, n_heads * head_dim, use_bias=False, rngs=rngs)
         self.w_k = nnx.Linear(d_model, n_kv_heads * head_dim, use_bias=False, rngs=rngs)
@@ -123,6 +130,15 @@ class GroupedQueryAttention(nnx.Module):
         scores = xq @ keys.transpose((0, 1, 3, 2)) / jnp.sqrt(self.head_dim)
         if mask is not None:
             scores = scores + mask
+
+        if self.sliding_window_size is not None:
+            sliding_mask = create_sliding_window_mask(
+                seq_len=seq_len,
+                window_size=self.sliding_window_size,
+                dtype=scores.dtype,
+            )
+            scores = jnp.where(sliding_mask, scores, -1e9)
+
         scores = jax.nn.softmax(scores, axis=-1).astype(xq.dtype)
 
         output = scores @ values
