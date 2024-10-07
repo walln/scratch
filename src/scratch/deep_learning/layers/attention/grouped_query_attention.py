@@ -104,7 +104,11 @@ class GroupedQueryAttention(nnx.Module):
         # Handle KV cache if provided
         if kv_cache is not None:
             keys, values, new_kv_cache = kv_cache.update(
-                xk, xv, 0, start_pos, self.n_rep
+                xk=xk,
+                xv=xv,
+                layer_idx=0,  # TODO(walln): Add support for multi-layer KV cache
+                cur_pos=start_pos,
+                n_rep=self.n_rep,
             )
         else:
             keys = self.repeat_kv(xk, self.n_rep)
