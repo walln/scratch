@@ -67,7 +67,7 @@ class GroupedQueryAttention(nnx.Module):
         self,
         x: jnp.ndarray,
         *,
-        freqs_complex: jnp.ndarray,
+        freqs_complex: jnp.ndarray | None = None,
         start_pos: int = 0,
         mask: jnp.ndarray | None = None,
         kv_cache: KVCache | None = None,
@@ -76,7 +76,7 @@ class GroupedQueryAttention(nnx.Module):
 
         Args:
             x: The input tensor.
-            freqs_complex: The frequencies for the cosine and sine functions.
+            freqs_complex: The frequencies for RoPE embeddings. Defaults to None.
             start_pos: The start position of the input sequence. Used only if
               kv_cache is provided.
             mask: The mask for the attention. Defaults to None.
@@ -98,7 +98,8 @@ class GroupedQueryAttention(nnx.Module):
         xv = xv.reshape(batch, seq_len, self.n_kv_heads, self.head_dim)
 
         # Apply rotary embeddings to the query and key projections
-        xq, xk = self.apply_rotary_emb(xq, xk, freqs_complex)
+        if freqs_complex is not None:
+            xq, xk = self.apply_rotary_emb(xq, xk, freqs_complex)
 
         # Handle KV cache if provided
         if kv_cache is not None:
