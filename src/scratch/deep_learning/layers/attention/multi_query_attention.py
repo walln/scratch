@@ -14,6 +14,7 @@ import jax.numpy as jnp
 from flax import nnx
 
 from scratch.deep_learning.layers.attention.kv_cache import LayerKVCache
+from scratch.deep_learning.layers.attention.rope import apply_rotary_emb
 from scratch.deep_learning.layers.attention.sliding_window import (
     create_sliding_window_mask,
 )
@@ -63,16 +64,19 @@ class MultiQueryAttention(nnx.Module):
 
     def __call__(
         self,
-        x,
-        mask=None,
-        deterministic=True,
-        start_pos=0,
+        x: jnp.ndarray,
+        *,
+        freqs_complex: jnp.ndarray | None = None,
+        mask: jnp.ndarray | None = None,
+        deterministic: bool = True,
+        start_pos: int = 0,
         kv_cache: LayerKVCache | None = None,
     ):
         """Applies the multi-query attention mechanism.
 
         Args:
             x: Input tensor of shape (batch_size, seq_length, d_model).
+            freqs_complex: The frequencies for RoPE embeddings. Defaults to None.
             mask: Attention mask of shape (batch_size, seq_length). Defaults to None.
             deterministic: If True, applies deterministic operations (e.g., no dropout).
                 Defaults to True.
@@ -82,7 +86,7 @@ class MultiQueryAttention(nnx.Module):
                 Defaults to None.
 
         Returns:
-            Tuple of tensor (batch_size, seq_length, d_model) and updated KVCache.
+            Tuple of tensor (batch_size, seq_length, d_model) and updated LayerKVCache.
         """
         batch, seq_len, _ = x.shape
 
@@ -96,6 +100,10 @@ class MultiQueryAttention(nnx.Module):
         # Ensure k and v always have a singleton n_heads dimension
         k = k.reshape(x.shape[0], x.shape[1], 1, self.head_dim)  # (bq1d)
         v = v.reshape(x.shape[0], x.shape[1], 1, self.head_dim)  # (bq1d)
+
+        # Apply rotary embeddings to the query and key projections
+        if freqs_complex is not None:
+            q, k = apply_rotary_emb(q, k, freqs_complex)
 
         updated_kv_cache = None
         if kv_cache is not None:

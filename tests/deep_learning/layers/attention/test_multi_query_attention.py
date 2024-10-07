@@ -5,6 +5,7 @@ import jax.numpy as jnp
 import pytest
 from flax import nnx
 
+from scratch.deep_learning.layers.attention import rope
 from scratch.deep_learning.layers.attention.kv_cache import LayerKVCache
 from scratch.deep_learning.layers.attention.multi_query_attention import (
     MultiQueryAttention,
@@ -32,9 +33,17 @@ def test_output_shape():
 
     mqa_module = create_mqa_module(d_model=d_model, n_heads=n_heads)
     x = jax.random.normal(jax.random.PRNGKey(0), (batch_size, seq_len, d_model))
+    freqs_complex = rope.precompute_theta_pos_freqs(d_model // n_heads, seq_len * 2)[
+        :seq_len
+    ]
 
-    output, _ = mqa_module(x)
-    assert output.shape == (batch_size, seq_len, d_model)
+    # Test with RoPE
+    output_rope, _ = mqa_module(x, freqs_complex=freqs_complex)
+    assert output_rope.shape == (batch_size, seq_len, d_model)
+
+    # Test without RoPE
+    output_no_rope, _ = mqa_module(x)
+    assert output_no_rope.shape == (batch_size, seq_len, d_model)
 
 
 def test_kv_cache_update():
@@ -45,11 +54,23 @@ def test_kv_cache_update():
     mqa_module = create_mqa_module(d_model=d_model, n_heads=n_heads)
     x = jax.random.normal(jax.random.PRNGKey(0), (batch_size, seq_len, d_model))
     kv_cache = LayerKVCache.create(batch_size, seq_len, 1, d_model // n_heads)
+    freqs_complex = rope.precompute_theta_pos_freqs(d_model // n_heads, seq_len * 2)[
+        :seq_len
+    ]
 
-    _, new_kv_cache = mqa_module(x, start_pos=0, kv_cache=kv_cache)
-    assert new_kv_cache is not None
-    assert jnp.any(new_kv_cache.k[:batch_size, :seq_len] != 0)
-    assert jnp.any(new_kv_cache.v[:batch_size, :seq_len] != 0)
+    # Test with RoPE
+    _, new_kv_cache_rope = mqa_module(
+        x, start_pos=0, kv_cache=kv_cache, freqs_complex=freqs_complex
+    )
+    assert new_kv_cache_rope is not None
+    assert jnp.any(new_kv_cache_rope.k[:batch_size, :seq_len] != 0)
+    assert jnp.any(new_kv_cache_rope.v[:batch_size, :seq_len] != 0)
+
+    # Test without RoPE
+    _, new_kv_cache_no_rope = mqa_module(x, start_pos=0, kv_cache=kv_cache)
+    assert new_kv_cache_no_rope is not None
+    assert jnp.any(new_kv_cache_no_rope.k[:batch_size, :seq_len] != 0)
+    assert jnp.any(new_kv_cache_no_rope.v[:batch_size, :seq_len] != 0)
 
 
 def test_no_kv_cache():
@@ -59,9 +80,17 @@ def test_no_kv_cache():
 
     mqa_module = create_mqa_module(d_model=d_model, n_heads=n_heads)
     x = jax.random.normal(jax.random.PRNGKey(0), (batch_size, seq_len, d_model))
+    freqs_complex = rope.precompute_theta_pos_freqs(d_model // n_heads, seq_len * 2)[
+        :seq_len
+    ]
 
-    output, new_kv_cache = mqa_module(x)
-    assert new_kv_cache is None
+    # Test with RoPE
+    output_rope, new_kv_cache_rope = mqa_module(x, freqs_complex=freqs_complex)
+    assert new_kv_cache_rope is None
+
+    # Test without RoPE
+    output_no_rope, new_kv_cache_no_rope = mqa_module(x)
+    assert new_kv_cache_no_rope is None
 
 
 @pytest.mark.parametrize(
@@ -74,9 +103,17 @@ def test_different_head_configurations(d_model: int, n_heads: int):
 
     mqa_module = create_mqa_module(d_model=d_model, n_heads=n_heads)
     x = jax.random.normal(jax.random.PRNGKey(0), (batch_size, seq_len, d_model))
+    freqs_complex = rope.precompute_theta_pos_freqs(d_model // n_heads, seq_len * 2)[
+        :seq_len
+    ]
 
-    output, _ = mqa_module(x)
-    assert output.shape == (batch_size, seq_len, d_model)
+    # Test with RoPE
+    output_rope, _ = mqa_module(x, freqs_complex=freqs_complex)
+    assert output_rope.shape == (batch_size, seq_len, d_model)
+
+    # Test without RoPE
+    output_no_rope, _ = mqa_module(x)
+    assert output_no_rope.shape == (batch_size, seq_len, d_model)
 
 
 @pytest.mark.parametrize(
@@ -99,9 +136,12 @@ def test_forward_backward():
 
     mqa_module = create_mqa_module(d_model=d_model, n_heads=n_heads)
     x = jax.random.normal(jax.random.PRNGKey(0), (batch_size, seq_len, d_model))
+    freqs_complex = rope.precompute_theta_pos_freqs(d_model // n_heads, seq_len * 2)[
+        :seq_len
+    ]
 
     def loss_fn(model):
-        output, _ = model(x)
+        output, _ = model(x, freqs_complex=freqs_complex)
         return jnp.mean(output**2)
 
     loss, grads = nnx.value_and_grad(loss_fn)(mqa_module)
@@ -121,11 +161,27 @@ def test_incremental_forward(start_pos):
     mqa_module = create_mqa_module(d_model=d_model, n_heads=n_heads)
     x = jax.random.normal(jax.random.PRNGKey(0), (batch_size, seq_len, d_model))
     kv_cache = LayerKVCache.create(batch_size, seq_len, 1, d_model // n_heads)
+    freqs_complex = rope.precompute_theta_pos_freqs(d_model // n_heads, seq_len * 2)[
+        :seq_len
+    ]
 
-    output, new_kv_cache = mqa_module(x, start_pos=start_pos, kv_cache=kv_cache)
-    assert output.shape == (batch_size, seq_len, d_model)
-    assert new_kv_cache is not None
-    assert jnp.any(new_kv_cache.k[:, start_pos : start_pos + seq_len, :, :] != 0)
+    # Test with RoPE
+    output_rope, new_kv_cache_rope = mqa_module(
+        x, start_pos=start_pos, kv_cache=kv_cache, freqs_complex=freqs_complex
+    )
+    assert output_rope.shape == (batch_size, seq_len, d_model)
+    assert new_kv_cache_rope is not None
+    assert jnp.any(new_kv_cache_rope.k[:, start_pos : start_pos + seq_len, :, :] != 0)
+
+    # Test without RoPE
+    output_no_rope, new_kv_cache_no_rope = mqa_module(
+        x, start_pos=start_pos, kv_cache=kv_cache
+    )
+    assert output_no_rope.shape == (batch_size, seq_len, d_model)
+    assert new_kv_cache_no_rope is not None
+    assert jnp.any(
+        new_kv_cache_no_rope.k[:, start_pos : start_pos + seq_len, :, :] != 0
+    )
 
 
 def test_numerical_stability():
@@ -135,10 +191,19 @@ def test_numerical_stability():
 
     mqa_module = create_mqa_module(d_model=d_model, n_heads=n_heads)
     x = jax.random.normal(jax.random.PRNGKey(0), (batch_size, seq_len, d_model))
+    freqs_complex = rope.precompute_theta_pos_freqs(d_model // n_heads, seq_len * 2)[
+        :seq_len
+    ]
 
-    output, _ = mqa_module(x)
-    assert not jnp.any(jnp.isnan(output))
-    assert not jnp.any(jnp.isinf(output))
+    # Test with RoPE
+    output_rope, _ = mqa_module(x, freqs_complex=freqs_complex)
+    assert not jnp.any(jnp.isnan(output_rope))
+    assert not jnp.any(jnp.isinf(output_rope))
+
+    # Test without RoPE
+    output_no_rope, _ = mqa_module(x)
+    assert not jnp.any(jnp.isnan(output_no_rope))
+    assert not jnp.any(jnp.isinf(output_no_rope))
 
 
 def test_masking():
@@ -148,16 +213,27 @@ def test_masking():
 
     mqa_module = create_mqa_module(d_model=d_model, n_heads=n_heads)
     x = jax.random.normal(jax.random.PRNGKey(0), (batch_size, seq_len, d_model))
+    freqs_complex = rope.precompute_theta_pos_freqs(d_model // n_heads, seq_len * 2)[
+        :seq_len
+    ]
 
     # Create a simple mask where the second half of the sequence is masked
     mask = jnp.ones((batch_size, seq_len))
     mask = mask.at[:, seq_len // 2 :].set(0)
 
-    output_with_mask, _ = mqa_module(x, mask=mask)
-    output_without_mask, _ = mqa_module(x)
+    # Test with RoPE
+    output_with_mask_rope, _ = mqa_module(x, mask=mask, freqs_complex=freqs_complex)
+    output_without_mask_rope, _ = mqa_module(x, freqs_complex=freqs_complex)
 
     # The outputs should be different when a mask is applied
-    assert not jnp.allclose(output_with_mask, output_without_mask)
+    assert not jnp.allclose(output_with_mask_rope, output_without_mask_rope)
+
+    # Test without RoPE
+    output_with_mask_no_rope, _ = mqa_module(x, mask=mask)
+    output_without_mask_no_rope, _ = mqa_module(x)
+
+    # The outputs should be different when a mask is applied
+    assert not jnp.allclose(output_with_mask_no_rope, output_without_mask_no_rope)
 
 
 def test_deterministic_mode():
@@ -171,23 +247,50 @@ def test_deterministic_mode():
         dropout_rate=0.5,  # Set a high dropout rate to make the effect more noticeable
     )
     x = jax.random.normal(jax.random.PRNGKey(0), (batch_size, seq_len, d_model))
+    freqs_complex = rope.precompute_theta_pos_freqs(d_model // n_heads, seq_len * 2)[
+        :seq_len
+    ]
 
-    # Run the module multiple times in deterministic mode
-    deterministic_outputs = [mqa_module(x, deterministic=True)[0] for _ in range(5)]
+    # Run the module multiple times in deterministic mode with RoPE
+    deterministic_outputs_rope = [
+        mqa_module(x, deterministic=True, freqs_complex=freqs_complex)[0]
+        for _ in range(5)
+    ]
 
     # All outputs should be the same in deterministic mode
-    for output in deterministic_outputs[1:]:
-        assert jnp.allclose(output, deterministic_outputs[0])
+    for output in deterministic_outputs_rope[1:]:
+        assert jnp.allclose(output, deterministic_outputs_rope[0])
 
-    # Run the module multiple times in non-deterministic mode
-    non_deterministic_outputs = [
+    # Run the module multiple times in non-deterministic mode with RoPE
+    non_deterministic_outputs_rope = [
+        mqa_module(x, deterministic=False, freqs_complex=freqs_complex)[0]
+        for _ in range(5)
+    ]
+
+    # Outputs should be different in non-deterministic mode (with high probability)
+    assert not all(
+        jnp.allclose(output, non_deterministic_outputs_rope[0])
+        for output in non_deterministic_outputs_rope[1:]
+    )
+
+    # Run the module multiple times in deterministic mode without RoPE
+    deterministic_outputs_no_rope = [
+        mqa_module(x, deterministic=True)[0] for _ in range(5)
+    ]
+
+    # All outputs should be the same in deterministic mode
+    for output in deterministic_outputs_no_rope[1:]:
+        assert jnp.allclose(output, deterministic_outputs_no_rope[0])
+
+    # Run the module multiple times in non-deterministic mode without RoPE
+    non_deterministic_outputs_no_rope = [
         mqa_module(x, deterministic=False)[0] for _ in range(5)
     ]
 
     # Outputs should be different in non-deterministic mode (with high probability)
     assert not all(
-        jnp.allclose(output, non_deterministic_outputs[0])
-        for output in non_deterministic_outputs[1:]
+        jnp.allclose(output, non_deterministic_outputs_no_rope[0])
+        for output in non_deterministic_outputs_no_rope[1:]
     )
 
 
@@ -200,22 +303,38 @@ def test_sliding_window_attention():
     window_size = seq_length
 
     x = jax.random.normal(jax.random.PRNGKey(0), (batch_size, seq_length, d_model))
+    freqs_complex = rope.precompute_theta_pos_freqs(
+        d_model // num_heads, seq_length * 2
+    )[:seq_length]
 
     attention_layer = MultiQueryAttention(
         d_model, num_heads, sliding_window_size=window_size, rngs=nnx.Rngs(0)
     )
-    output, _ = attention_layer(x)
 
-    assert output.shape == (batch_size, seq_length, d_model)
+    # Test with RoPE
+    output_rope, _ = attention_layer(x, freqs_complex=freqs_complex)
+    assert output_rope.shape == (batch_size, seq_length, d_model)
+
+    # Test without RoPE
+    output_no_rope, _ = attention_layer(x)
+    assert output_no_rope.shape == (batch_size, seq_length, d_model)
 
     sliding_window_attention_layer = MultiQueryAttention(
         d_model, num_heads, sliding_window_size=window_size, rngs=nnx.Rngs(0)
     )
-    sliding_output, _ = sliding_window_attention_layer(x)
 
-    assert sliding_output.shape == (batch_size, seq_length, d_model)
+    # Test with RoPE
+    sliding_output_rope, _ = sliding_window_attention_layer(
+        x, freqs_complex=freqs_complex
+    )
+    assert sliding_output_rope.shape == (batch_size, seq_length, d_model)
 
-    assert jnp.allclose(output, sliding_output, atol=1e-5)
+    # Test without RoPE
+    sliding_output_no_rope, _ = sliding_window_attention_layer(x)
+    assert sliding_output_no_rope.shape == (batch_size, seq_length, d_model)
+
+    assert jnp.allclose(output_rope, sliding_output_rope, atol=1e-5)
+    assert jnp.allclose(output_no_rope, sliding_output_no_rope, atol=1e-5)
 
 
 def test_multi_query_attention_sliding_window_consistency():
@@ -229,18 +348,38 @@ def test_multi_query_attention_sliding_window_consistency():
     )
 
     x = jax.random.normal(jax.random.PRNGKey(0), (batch_size, seq_length, d_model))
+    freqs_complex = rope.precompute_theta_pos_freqs(
+        d_model // num_heads, seq_length * 2
+    )[:seq_length]
 
     # Attention layer without sliding window
     attention_layer_without_window = MultiQueryAttention(
         d_model, num_heads, rngs=nnx.Rngs(0)
     )
-    output_without_window, _ = attention_layer_without_window(x)
+
+    # Test with RoPE
+    output_without_window_rope, _ = attention_layer_without_window(
+        x, freqs_complex=freqs_complex
+    )
+
+    # Test without RoPE
+    output_without_window_no_rope, _ = attention_layer_without_window(x)
 
     # Attention layer with sliding window
     attention_layer_with_window = MultiQueryAttention(
         d_model, num_heads, sliding_window_size=window_size, rngs=nnx.Rngs(0)
     )
-    output_with_window, _ = attention_layer_with_window(x)
 
-    # Check if outputs are close
-    assert jnp.allclose(output_without_window, output_with_window, atol=1e-5)
+    # Test with RoPE
+    output_with_window_rope, _ = attention_layer_with_window(
+        x, freqs_complex=freqs_complex
+    )
+
+    # Test without RoPE
+    output_with_window_no_rope, _ = attention_layer_with_window(x)
+
+    # Check if outputs are close for both RoPE and non-RoPE cases
+    assert jnp.allclose(output_without_window_rope, output_with_window_rope, atol=1e-5)
+    assert jnp.allclose(
+        output_without_window_no_rope, output_with_window_no_rope, atol=1e-5
+    )
