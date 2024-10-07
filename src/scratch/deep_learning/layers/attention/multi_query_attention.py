@@ -20,7 +20,6 @@ from scratch.deep_learning.layers.attention.sliding_window import (
 )
 
 
-# TODO(walln): Add support for RoPE
 class MultiQueryAttention(nnx.Module):
     """Multi-Query Attention (MQA).
 
