@@ -16,6 +16,7 @@ from flax import nnx
 from scratch.deep_learning.layers.attention.kv_cache import KVCache
 
 
+# TODO(walln): Add support for RoPE
 class MultiQueryAttention(nnx.Module):
     """Multi-Query Attention (MQA).
 
