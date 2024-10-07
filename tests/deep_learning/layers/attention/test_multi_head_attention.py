@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 from flax import nnx
 
-from scratch.deep_learning.layers.attention.kv_cache import KVCache
+from scratch.deep_learning.layers.attention.kv_cache import LayerKVCache
 from scratch.deep_learning.layers.attention.multi_head_attention import (
     MultiHeadAttention,
 )
@@ -59,8 +59,8 @@ def test_multi_head_attention_with_kv_cache():
     seq_length = 10
 
     x = jnp.ones((batch_size, seq_length, d_model))
-    kv_cache = KVCache.create(
-        1, batch_size, seq_length, num_heads, d_model // num_heads
+    kv_cache = LayerKVCache.create(
+        batch_size, seq_length, num_heads, d_model // num_heads
     )
 
     attention_layer = MultiHeadAttention(d_model, num_heads, rngs=nnx.Rngs(0))
@@ -85,8 +85,8 @@ def test_multi_head_attention_output_consistency():
     output_without_cache, _ = attention_layer(x)
 
     # Output with KV cache
-    kv_cache = KVCache.create(
-        1, batch_size, seq_length, num_heads, d_model // num_heads
+    kv_cache = LayerKVCache.create(
+        batch_size, seq_length, num_heads, d_model // num_heads
     )
     output_with_cache, _ = attention_layer(x, start_pos=0, kv_cache=kv_cache)
 

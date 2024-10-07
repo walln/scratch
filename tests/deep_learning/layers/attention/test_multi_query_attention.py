@@ -5,7 +5,7 @@ import jax.numpy as jnp
 import pytest
 from flax import nnx
 
-from scratch.deep_learning.layers.attention.kv_cache import KVCache
+from scratch.deep_learning.layers.attention.kv_cache import LayerKVCache
 from scratch.deep_learning.layers.attention.multi_query_attention import (
     MultiQueryAttention,
 )
@@ -44,7 +44,7 @@ def test_kv_cache_update():
 
     mqa_module = create_mqa_module(d_model=d_model, n_heads=n_heads)
     x = jax.random.normal(jax.random.PRNGKey(0), (batch_size, seq_len, d_model))
-    kv_cache = KVCache.create(1, batch_size, seq_len, 1, d_model // n_heads)
+    kv_cache = LayerKVCache.create(batch_size, seq_len, 1, d_model // n_heads)
 
     _, new_kv_cache = mqa_module(x, start_pos=0, kv_cache=kv_cache)
     assert new_kv_cache is not None
@@ -120,12 +120,12 @@ def test_incremental_forward(start_pos):
 
     mqa_module = create_mqa_module(d_model=d_model, n_heads=n_heads)
     x = jax.random.normal(jax.random.PRNGKey(0), (batch_size, seq_len, d_model))
-    kv_cache = KVCache.create(1, batch_size, seq_len, 1, d_model // n_heads)
+    kv_cache = LayerKVCache.create(batch_size, seq_len, 1, d_model // n_heads)
 
     output, new_kv_cache = mqa_module(x, start_pos=start_pos, kv_cache=kv_cache)
     assert output.shape == (batch_size, seq_len, d_model)
     assert new_kv_cache is not None
-    assert jnp.any(new_kv_cache.k[:, :, start_pos : start_pos + seq_len, :, :] != 0)
+    assert jnp.any(new_kv_cache.k[:, start_pos : start_pos + seq_len, :, :] != 0)
 
 
 def test_numerical_stability():
