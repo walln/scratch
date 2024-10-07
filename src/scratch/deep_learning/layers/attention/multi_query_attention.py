@@ -88,7 +88,13 @@ class MultiQueryAttention(nnx.Module):
 
         updated_kv_cache = None
         if kv_cache is not None:
-            k, v, updated_kv_cache = self.update_kv_cache(k, v, kv_cache, start_pos)
+            k, v, updated_kv_cache = kv_cache.update(
+                xk=k,
+                xv=v,
+                layer_idx=0,  # TODO(walln): Add support for multi-layer KV cache
+                cur_pos=start_pos,
+                n_rep=self.n_heads,
+            )
 
         # raise ValueError(f"q: {q.shape}, k: {k.shape}, v: {v.shape}")
         attn_weights = jnp.einsum("bqhd, bkhd -> bhqk", q, k) / jnp.sqrt(self.head_dim)
@@ -104,35 +110,3 @@ class MultiQueryAttention(nnx.Module):
         output = self.out_proj(attn_output)
 
         return output, updated_kv_cache
-
-    def update_kv_cache(
-        self,
-        keys: jnp.ndarray,
-        values: jnp.ndarray,
-        kv_cache: KVCache,
-        start_pos: int,
-    ) -> tuple[jnp.ndarray, jnp.ndarray, KVCache]:
-        """Update the KV cache.
-
-        Args:
-            keys: The keys to update the cache with.
-            values: The values to update the cache with.
-            kv_cache: The existing KVCache instance.
-            start_pos: The start position of the input sequence.
-
-        Returns:
-            A tuple containing:
-                - The updated keys.
-                - The updated values.
-                - The updated KVCache instance.
-        """
-        # Update the kv cache with the new keys and values for the current sequence
-        out_keys, out_values, updated_kv_cache = kv_cache.update(
-            xk=keys,
-            xv=values,
-            layer_idx=0,  # Assuming single layer; adjust if multi-layer
-            cur_pos=start_pos,
-            n_rep=1,  # Number of repetitions; adjust as needed
-        )
-
-        return out_keys, out_values, updated_kv_cache
