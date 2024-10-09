@@ -174,6 +174,8 @@ class DepthwiseConv1D(nnx.Module):
             kernel_size=(kernel_size,),
             feature_group_count=conv_dim,
             padding=[(padding, padding)],
+            # kaiming normal is relu optimal
+            kernel_init=nnx.initializers.he_normal(),
             rngs=rngs,
         )
 
@@ -219,7 +221,14 @@ class MambaLayer(nnx.Module):
         self.config = config
 
         d_in_proj = 2 * config.d_inner + 2 * config.d_state + config.n_heads
-        self.in_proj = nnx.Linear(config.d_model, d_in_proj, use_bias=False, rngs=rngs)
+        self.in_proj = nnx.Linear(
+            config.d_model,
+            d_in_proj,
+            use_bias=False,
+            # glorot uniform balances variance between input and output dimensions
+            kernel_init=nnx.initializers.glorot_uniform(),
+            rngs=rngs,
+        )
 
         conv_dim = config.d_inner + 2 * config.d_state
         self.conv = DepthwiseConv1D(
@@ -229,12 +238,30 @@ class MambaLayer(nnx.Module):
             rngs=rngs,
         )
 
-        self.dt_bias = nnx.Param(jnp.zeros(config.n_heads), rngs=rngs)
-        self.A_log = nnx.Param(jnp.zeros(config.n_heads), rngs=rngs)
-        self.D = nnx.Param(jnp.zeros(config.n_heads), rngs=rngs)
+        self.dt_bias = nnx.Param(
+            # after softplus dt needs to remain positive while still being small
+            nnx.initializers.constant(0.1)(rngs(), (config.n_heads,)),
+            rngs=rngs,
+        )
+        self.A_log = nnx.Param(
+            # initialize A_log to -1.0 so that after exp it is close to 0.0 but still
+            # positive - this is since A = -exp(A_log)
+            nnx.initializers.constant(-1.0)(rngs(), (config.n_heads,)),
+            rngs=rngs,
+        )
+        self.D = nnx.Param(
+            # small stable scaling factor for residual (not sure what would be better)
+            nnx.initializers.constant(0.1)(rngs(), (config.n_heads,)),
+            rngs=rngs,
+        )
         self.norm = nnx.RMSNorm(config.d_inner, rngs=rngs)
         self.out_proj = nnx.Linear(
-            config.d_inner, config.d_model, use_bias=False, rngs=rngs
+            config.d_inner,
+            config.d_model,
+            use_bias=False,
+            # glorot uniform balances variance between input and output dimensions
+            kernel_init=nnx.initializers.glorot_uniform(),
+            rngs=rngs,
         )
 
     def __call__(self, x: jnp.ndarray, cache: InferenceCache | None = None):
