@@ -42,6 +42,8 @@ dev = [
     "ipykernel>=6.29.5",
     "jupyter>=1.1.1",
     "ruff>=0.8.4",
+    "ty>=0.0.1a10",
+
 ]
 
 [tool.uv]
@@ -62,6 +64,8 @@ packages = ["src/scratch"]
 target-version = "py312"
 include = ["src/**", "tests/**"]
 line-length = 88
+
+[tool.ruff.lint]
 select = [
     "E",      # pycodestyle
     "W",      # pycodestyle
@@ -79,10 +83,10 @@ select = [
 ]
 ignore = ["F722"]
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "google"
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["src"]
 
 [tool.pytest.ini_options]

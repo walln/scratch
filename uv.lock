@@ -328,10 +328,10 @@ version = "0.1.89"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "absl-py" },
-    { name = "jax", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "jax", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "jaxlib", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "jaxlib", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jax", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jax", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jaxlib", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jaxlib", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
     { name = "numpy" },
     { name = "setuptools" },
     { name = "toolz" },
@@ -516,8 +516,8 @@ name = "equinox"
 version = "0.12.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "jax", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "jax", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jax", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jax", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
     { name = "jaxtyping" },
     { name = "typing-extensions" },
     { name = "wadler-lindig" },
@@ -579,8 +579,8 @@ name = "flax"
 version = "0.10.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "jax", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "jax", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jax", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jax", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
     { name = "msgpack" },
     { name = "numpy" },
     { name = "optax" },
@@ -938,11 +938,11 @@ resolution-markers = [
     "python_full_version < '3.13' and sys_platform == 'linux'",
 ]
 dependencies = [
-    { name = "jaxlib", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "ml-dtypes", marker = "(sys_platform == 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "numpy", marker = "(sys_platform == 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "opt-einsum", marker = "(sys_platform == 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "scipy", marker = "(sys_platform == 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jaxlib", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux'" },
+    { name = "ml-dtypes", marker = "sys_platform == 'linux'" },
+    { name = "numpy", marker = "sys_platform == 'linux'" },
+    { name = "opt-einsum", marker = "sys_platform == 'linux'" },
+    { name = "scipy", marker = "sys_platform == 'linux'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/13/e5/dabb73ab10330e9535aba14fc668b04a46fcd8e78f06567c4f4f1adce340/jax-0.5.3.tar.gz", hash = "sha256:f17fcb0fd61dc289394af6ce4de2dada2312f2689bb0d73642c6f026a95fbb2c", size = 2072748 }
 wheels = [
@@ -960,17 +960,15 @@ name = "jax"
 version = "0.6.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.13' and sys_platform == 'linux'",
-    "python_full_version < '3.13' and sys_platform == 'linux'",
     "python_full_version >= '3.13' and sys_platform != 'linux'",
     "python_full_version < '3.13' and sys_platform != 'linux'",
 ]
 dependencies = [
-    { name = "jaxlib", version = "0.6.1", source = { registry = "https://pypi.org/simple" } },
-    { name = "ml-dtypes" },
-    { name = "numpy" },
-    { name = "opt-einsum" },
-    { name = "scipy" },
+    { name = "jaxlib", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux'" },
+    { name = "ml-dtypes", marker = "sys_platform != 'linux'" },
+    { name = "numpy", marker = "sys_platform != 'linux'" },
+    { name = "opt-einsum", marker = "sys_platform != 'linux'" },
+    { name = "scipy", marker = "sys_platform != 'linux'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a3/b9/6d3d88fbab17696d00824ecac3d67feea1ff0abe12d3ebe64166a311ac04/jax-0.6.1.tar.gz", hash = "sha256:c4dcb93e1d34f80cf7adfa81f3fdab62a5068b69107b7a6117f8742ab37b6779", size = 2062260 }
 wheels = [
@@ -1083,8 +1081,10 @@ name = "jax-metal"
 version = "0.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "jax", version = "0.6.1", source = { registry = "https://pypi.org/simple" } },
-    { name = "jaxlib", version = "0.6.1", source = { registry = "https://pypi.org/simple" } },
+    { name = "jax", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux'" },
+    { name = "jax", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux'" },
+    { name = "jaxlib", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux'" },
+    { name = "jaxlib", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux'" },
     { name = "six" },
     { name = "wheel" },
 ]
@@ -1099,10 +1099,10 @@ version = "0.2.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "einops" },
-    { name = "jax", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "jax", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "jaxlib", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "jaxlib", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jax", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jax", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jaxlib", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jaxlib", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
     { name = "optax" },
     { name = "simple-pytree" },
 ]
@@ -1120,9 +1120,9 @@ resolution-markers = [
     "python_full_version < '3.13' and sys_platform == 'linux'",
 ]
 dependencies = [
-    { name = "ml-dtypes", marker = "(sys_platform == 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "numpy", marker = "(sys_platform == 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "scipy", marker = "(sys_platform == 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "ml-dtypes", marker = "sys_platform == 'linux'" },
+    { name = "numpy", marker = "sys_platform == 'linux'" },
+    { name = "scipy", marker = "sys_platform == 'linux'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d5/a5/646af791ccf75641b4df84fb6cb6e3914b0df87ec5fa5f82397fd5dc30ee/jaxlib-0.5.3-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:d394dbde4a1c6bd67501cfb29d3819a10b900cb534cc0fc603319f7092f24cfa", size = 63711839 },
@@ -1141,15 +1141,13 @@ name = "jaxlib"
 version = "0.6.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.13' and sys_platform == 'linux'",
-    "python_full_version < '3.13' and sys_platform == 'linux'",
     "python_full_version >= '3.13' and sys_platform != 'linux'",
     "python_full_version < '3.13' and sys_platform != 'linux'",
 ]
 dependencies = [
-    { name = "ml-dtypes" },
-    { name = "numpy" },
-    { name = "scipy" },
+    { name = "ml-dtypes", marker = "sys_platform != 'linux'" },
+    { name = "numpy", marker = "sys_platform != 'linux'" },
+    { name = "scipy", marker = "sys_platform != 'linux'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/83/76/fec2772816bad8ee3f7b450bf3e0927d5e158c45a57b6cd92a48b80bfb1a/jaxlib-0.6.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:e14195c23eecd559a61c31027b4172e912e5a50f630320918ffdfae83090ca5a", size = 53787339 },
@@ -2191,10 +2189,10 @@ source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "absl-py" },
     { name = "chex" },
-    { name = "jax", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "jax", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "jaxlib", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "jaxlib", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jax", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jax", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jaxlib", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jaxlib", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
     { name = "numpy" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c0/75/1e011953c48be502d4d84fa8458e91be7c6f983002511669bddd7b1a065f/optax-0.2.5.tar.gz", hash = "sha256:b2e38c7aea376186deae758ba7a258e6ef760c6f6131e9e11bc561c65386d594", size = 258548 }
@@ -2219,8 +2217,8 @@ dependencies = [
     { name = "absl-py" },
     { name = "etils", extra = ["epath", "epy"] },
     { name = "humanize" },
-    { name = "jax", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "jax", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jax", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jax", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
     { name = "msgpack" },
     { name = "nest-asyncio" },
     { name = "numpy" },
@@ -3033,11 +3031,11 @@ dependencies = [
     { name = "datasets" },
     { name = "equinox" },
     { name = "flax" },
-    { name = "jax", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "jax", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jax", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jax", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
     { name = "jax-metrics" },
-    { name = "jaxlib", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "jaxlib", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jaxlib", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jaxlib", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
     { name = "jmp" },
     { name = "loguru" },
     { name = "matplotlib" },
@@ -3045,10 +3043,10 @@ dependencies = [
     { name = "optax" },
     { name = "orbax" },
     { name = "scikit-learn" },
-    { name = "torch", version = "2.7.0", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform != 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "torch", version = "2.7.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "torchvision", version = "0.22.0", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform != 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "torchvision", version = "0.22.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "torch", version = "2.7.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "torch", version = "2.7.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "torchvision", version = "0.22.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "torchvision", version = "0.22.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
     { name = "tqdm" },
     { name = "transformers" },
     { name = "typer" },
@@ -3057,8 +3055,8 @@ dependencies = [
 
 [package.dev-dependencies]
 cpu = [
-    { name = "jax", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "jax", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jax", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jax", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
 ]
 cuda = [
     { name = "jax", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, extra = ["cuda12"], marker = "sys_platform == 'linux'" },
@@ -3071,6 +3069,7 @@ dev = [
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "ruff" },
+    { name = "ty" },
 ]
 metal = [
     { name = "jax-metal" },
@@ -3109,6 +3108,7 @@ dev = [
     { name = "pre-commit", specifier = ">=4.0.1" },
     { name = "pytest", specifier = ">=8.3.4" },
     { name = "ruff", specifier = ">=0.8.4" },
+    { name = "ty", specifier = ">=0.0.1a10" },
 ]
 metal = [{ name = "jax-metal", specifier = ">=0.1.0" }]
 
@@ -3201,10 +3201,10 @@ name = "simple-pytree"
 version = "0.2.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "jax", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "jax", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "jaxlib", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "jaxlib", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jax", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jax", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jaxlib", version = "0.5.3", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jaxlib", version = "0.6.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
     { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/8e/b0/b2e7ea15dfb26bf014cfb6243a9bb20b9477ee2f12d754257514f508639a/simple_pytree-0.2.2.tar.gz", hash = "sha256:b61eddb5b5de558209dfb6464a041c5faf06af2c3cab582f4d69543a773dab0e", size = 5331 }
@@ -3409,13 +3409,13 @@ resolution-markers = [
     "python_full_version < '3.13' and sys_platform != 'linux'",
 ]
 dependencies = [
-    { name = "filelock", marker = "(sys_platform != 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "fsspec", marker = "(sys_platform != 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "jinja2", marker = "(sys_platform != 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "networkx", marker = "(sys_platform != 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "setuptools", marker = "(sys_platform != 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "sympy", marker = "(sys_platform != 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "typing-extensions", marker = "(sys_platform != 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "filelock", marker = "sys_platform != 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "fsspec", marker = "sys_platform != 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jinja2", marker = "sys_platform != 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "networkx", marker = "sys_platform != 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "setuptools", marker = "sys_platform != 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "sympy", marker = "sys_platform != 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "typing-extensions", marker = "sys_platform != 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/aa/5e/ac759f4c0ab7c01feffa777bd68b43d2ac61560a9770eeac074b450f81d4/torch-2.7.0-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:36a6368c7ace41ad1c0f69f18056020b6a5ca47bedaca9a2f3b578f5a104c26c", size = 99013250 },
@@ -3439,14 +3439,12 @@ source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.13' and sys_platform == 'linux'",
     "python_full_version < '3.13' and sys_platform == 'linux'",
-    "python_full_version >= '3.13' and sys_platform != 'linux'",
-    "python_full_version < '3.13' and sys_platform != 'linux'",
 ]
 dependencies = [
-    { name = "filelock", marker = "sys_platform == 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "fsspec", marker = "sys_platform == 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "jinja2", marker = "sys_platform == 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "networkx", marker = "sys_platform == 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "filelock", marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "fsspec", marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "jinja2", marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "networkx", marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
     { name = "nvidia-cublas-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal') or (sys_platform != 'linux' and extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
     { name = "nvidia-cuda-cupti-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal') or (sys_platform != 'linux' and extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
     { name = "nvidia-cuda-nvrtc-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal') or (sys_platform != 'linux' and extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
@@ -3461,10 +3459,10 @@ dependencies = [
     { name = "nvidia-nccl-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal') or (sys_platform != 'linux' and extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
     { name = "nvidia-nvjitlink-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal') or (sys_platform != 'linux' and extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
     { name = "nvidia-nvtx-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal') or (sys_platform != 'linux' and extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "setuptools", marker = "sys_platform == 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "sympy", marker = "sys_platform == 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "setuptools", marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "sympy", marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
     { name = "triton", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal') or (sys_platform != 'linux' and extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "typing-extensions", marker = "sys_platform == 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "typing-extensions", marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/87/93/fb505a5022a2e908d81fe9a5e0aa84c86c0d5f408173be71c6018836f34e/torch-2.7.1-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:27ea1e518df4c9de73af7e8a720770f3628e7f667280bce2be7a16292697e3fa", size = 98948276 },
@@ -3490,9 +3488,9 @@ resolution-markers = [
     "python_full_version < '3.13' and sys_platform != 'linux'",
 ]
 dependencies = [
-    { name = "numpy", marker = "(sys_platform != 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "pillow", marker = "(sys_platform != 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "torch", version = "2.7.0", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform != 'linux' and extra == 'group-7-scratch-cuda') or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "numpy", marker = "sys_platform != 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "pillow", marker = "sys_platform != 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "torch", version = "2.7.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/cb/ea/887d1d61cf4431a46280972de665f350af1898ce5006cd046326e5d0a2f2/torchvision-0.22.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:31c3165418fe21c3d81fe3459e51077c2f948801b8933ed18169f54652796a0f", size = 1947826 },
@@ -3516,13 +3514,11 @@ source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.13' and sys_platform == 'linux'",
     "python_full_version < '3.13' and sys_platform == 'linux'",
-    "python_full_version >= '3.13' and sys_platform != 'linux'",
-    "python_full_version < '3.13' and sys_platform != 'linux'",
 ]
 dependencies = [
-    { name = "numpy", marker = "sys_platform == 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "pillow", marker = "sys_platform == 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
-    { name = "torch", version = "2.7.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "numpy", marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "pillow", marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "torch", version = "2.7.1", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/02/90/f4e99a5112dc221cf68a485e853cc3d9f3f1787cb950b895f3ea26d1ea98/torchvision-0.22.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:153f1790e505bd6da123e21eee6e83e2e155df05c0fe7d56347303067d8543c5", size = 1947827 },
@@ -3617,12 +3613,37 @@ name = "triton"
 version = "3.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "setuptools", marker = "sys_platform == 'linux' or extra != 'group-7-scratch-cuda' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
+    { name = "setuptools", marker = "sys_platform == 'linux' or (extra == 'group-7-scratch-cuda' and extra == 'group-7-scratch-metal')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/24/5f/950fb373bf9c01ad4eb5a8cd5eaf32cdf9e238c02f9293557a2129b9c4ac/triton-3.3.1-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:9999e83aba21e1a78c1f36f21bce621b77bcaa530277a50484a7cb4a822f6e43", size = 155669138 },
     { url = "https://files.pythonhosted.org/packages/74/1f/dfb531f90a2d367d914adfee771babbd3f1a5b26c3f5fbc458dee21daa78/triton-3.3.1-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b89d846b5a4198317fec27a5d3a609ea96b6d557ff44b56c23176546023c4240", size = 155673035 },
     { url = "https://files.pythonhosted.org/packages/28/71/bd20ffcb7a64c753dc2463489a61bf69d531f308e390ad06390268c4ea04/triton-3.3.1-cp313-cp313t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:a3198adb9d78b77818a5388bff89fa72ff36f9da0bc689db2f0a651a67ce6a42", size = 155735832 },
+]
+
+[[package]]
+name = "ty"
+version = "0.0.1a10"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/23/b4/27b44dda3ffd5b10720cb8abf206609e163e9357926caa4d821be565f916/ty-0.0.1a10.tar.gz", hash = "sha256:f57455fd1fef1d6c2ee54cf482b20f6ace2b5ce7645dc30d5249d58cc92a312c", size = 3075686 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/62/8f/5632f6b84c9f502a769787933e26983041239812e03ef97c7395249feae0/ty-0.0.1a10-py3-none-linux_armv6l.whl", hash = "sha256:e50f0f5704ff2a6a28b998cedb016af775202f4608a53c7aa100c7bd373dc2cb", size = 6600200 },
+    { url = "https://files.pythonhosted.org/packages/40/0d/a22fac3cff8e4ef86255fedeb7d92a876c2535cac76a986a7c5dde6c7cbb/ty-0.0.1a10-py3-none-macosx_10_12_x86_64.whl", hash = "sha256:bcb82dcadfa646a4266370704513a0b095f391f09f5a4cc32a4941d50b5950f8", size = 6720354 },
+    { url = "https://files.pythonhosted.org/packages/cb/a8/c66f2653202ba74a293188d66631416f4081b52b03c85e33ae2a64f0d55c/ty-0.0.1a10-py3-none-macosx_11_0_arm64.whl", hash = "sha256:1668a490f903a83e2ec114a3490b1cc46e1237e8e4a9d2d2cadcaacca3c0e475", size = 6368296 },
+    { url = "https://files.pythonhosted.org/packages/11/21/1a45908116d1a4f90a500d295058d22f7ffd6a538f6e9d953cdec42af399/ty-0.0.1a10-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:896ad652b181fd55b2fd95bd0e6e3fe320b5122a8a0e3f2964a46ae740de7c6a", size = 6503030 },
+    { url = "https://files.pythonhosted.org/packages/8d/3f/2c6346075da30e61d8c795f56967a695f96068d6a3b53c2ed0252cd9ad72/ty-0.0.1a10-py3-none-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:01a171276feaa47a91baa0a8301bfb4a0dfbcdd2100135bacb209ec21b25c5ae", size = 6472872 },
+    { url = "https://files.pythonhosted.org/packages/d3/5e/e4fbd4ed8b3ab8e3dfcc0448d4ed1711ff95ea4935ecfd04ec7b57ec35cb/ty-0.0.1a10-py3-none-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:25b0f822a1070f49aa5c1477323bcfb359a6fd7b026f5ea67773fbdfd8c7b195", size = 7248847 },
+    { url = "https://files.pythonhosted.org/packages/89/38/cb81bfcefabf59a8754b75100227fb231b5361c0dd7411afa895b1e1c535/ty-0.0.1a10-py3-none-manylinux_2_17_ppc64.manylinux2014_ppc64.whl", hash = "sha256:e87acad504b5ea9d5cb83303b89b0a908e21b3ac2e4ac565ee3d30c9de88f717", size = 7671011 },
+    { url = "https://files.pythonhosted.org/packages/af/ae/059135dadcc3e326cf9ddc4cc5abcc618037644155d9591a78b9313861b7/ty-0.0.1a10-py3-none-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:96481beaa86a2c89b87b402308e910e0a800bc9cf8fb33fdaf337966e46bc898", size = 7322529 },
+    { url = "https://files.pythonhosted.org/packages/3a/32/cba32da1ce59991eb2f2eb40ae20547b66f8d2c4ab462d2690267e627d32/ty-0.0.1a10-py3-none-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:ff7d8e76b089b9aef5a9f7d9d0cb79f3f70a212fe7a78ec215ec78bfb65c9b05", size = 7227676 },
+    { url = "https://files.pythonhosted.org/packages/ed/7d/c539ea79a48b7d72911b830dfe502b5a78589b1a9f0d346eea164e15678a/ty-0.0.1a10-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:1cd4adcc7e7505d6717a27bc51158a2cd3139a870c77aba71231a25bd552f415", size = 7014588 },
+    { url = "https://files.pythonhosted.org/packages/26/0c/ef43f59c8dd62ed9be3573ed6a858c78c6032d6c929446b43cab8c909ab9/ty-0.0.1a10-py3-none-musllinux_1_2_aarch64.whl", hash = "sha256:1c02470cf022c6f1704f0e0a2c15a7eb86e51ece4e1a0e7db0b16ff22b97d085", size = 6401198 },
+    { url = "https://files.pythonhosted.org/packages/22/3c/922f8e7a829c03bc6ca8ac14416f7b5180177018664c199dc9b0bc8b5ef0/ty-0.0.1a10-py3-none-musllinux_1_2_armv7l.whl", hash = "sha256:3b09c0da356b8b706a6e82898a21f78ae61bec96cf17b1cd50b6c9483e436003", size = 6495134 },
+    { url = "https://files.pythonhosted.org/packages/d2/90/9ae44bfd1fb3102731b5b581a7e82825bad45e736e40a091540c880e96b1/ty-0.0.1a10-py3-none-musllinux_1_2_i686.whl", hash = "sha256:39878e974f1c25a0f45f99aa026da79a429dbf00b48b24c1dcc1d7dccc6765ad", size = 6913996 },
+    { url = "https://files.pythonhosted.org/packages/2f/ec/a62e279ac0bd097733c435a11a9cef9e66dff7af3b9f157186117ad63448/ty-0.0.1a10-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:c2cae00b4a5c1d1ee6a70d62542f16c4531e5af06bcf4d7376808f915ab01bf0", size = 7080426 },
+    { url = "https://files.pythonhosted.org/packages/0c/b0/7f97a73ab1f0282e3b87215cacefabbdc6e19fa99d93e6931ec52fec28a4/ty-0.0.1a10-py3-none-win32.whl", hash = "sha256:9788bf5e55242b8bcb1d6f7111e75aa5bb8a56a30e25d97483abb8ae17bc802b", size = 6303169 },
+    { url = "https://files.pythonhosted.org/packages/13/ca/6cccb751923ccf73f74a4ea44e20e73ec80d1471915d06a199af350d4f9c/ty-0.0.1a10-py3-none-win_amd64.whl", hash = "sha256:12aded32a30e9e38310be7d409d5a4621dbc50637d333ffe441e5cb2e3eb0b33", size = 6837036 },
+    { url = "https://files.pythonhosted.org/packages/b5/30/19c6c8b9dbbbd60bfbe9a56941ad9f8ee09ad83cd08dd63145404959e953/ty-0.0.1a10-py3-none-win_arm64.whl", hash = "sha256:39c9483dcecde4bff0113a096afcec227e264fe60f2fcf925b9e65dbdbc78df3", size = 6461965 },
 ]
 
 [[package]]

@@ -21,7 +21,7 @@ repos:
         stages: [commit-msg]
       - id: typecheck
         name: typecheck
-        entry: uvx mypy src/scratch/
+        entry: uvx ty check
         language: system
         types: [python]
         pass_filenames: false

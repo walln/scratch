@@ -92,6 +92,10 @@ def precompute_theta_pos_freqs(dim: int, end: int, theta: float = 10000.0):
     """
     freqs = 1.0 / (theta ** (jnp.arange(0, dim, 2)[: (dim // 2)] / dim))
     t = jnp.arange(end, dtype=jnp.float32)
+
+    assert isinstance(t, jnp.ndarray)
+    assert isinstance(freqs, jnp.ndarray)
+
     freqs = jnp.outer(t, freqs)
     freqs_cis = jnp.exp(1j * freqs)  # Using Euler's formula to create complex numbers
     return freqs_cis

@@ -122,7 +122,7 @@ class TokenClassificationTrainer(SupervisedTrainer[M]):
 
         @nnx.jit
         def eval_step(model: M, train_state: TrainState, batch: dict):
-            logits = model(
+            logits = model(  # type: ignore
                 input_ids=batch["input_ids"],
                 attention_mask=batch["attention_mask"],
                 train=False,

@@ -173,9 +173,9 @@ def test_forward_backward():
     shape_check_rope = jax.tree_util.tree_map(
         lambda p, g: p.shape == g.shape, params, grads_rope
     )
-    assert jax.tree_util.tree_all(
-        shape_check_rope
-    ), f"Shapes don't match with RoPE: {shape_check_rope}"
+    assert jax.tree_util.tree_all(shape_check_rope), (
+        f"Shapes don't match with RoPE: {shape_check_rope}"
+    )
 
     # Test without RoPE
     def loss_fn_no_rope(model):
@@ -187,9 +187,9 @@ def test_forward_backward():
     shape_check_no_rope = jax.tree_util.tree_map(
         lambda p, g: p.shape == g.shape, params, grads_no_rope
     )
-    assert jax.tree_util.tree_all(
-        shape_check_no_rope
-    ), f"Shapes don't match without RoPE: {shape_check_no_rope}"
+    assert jax.tree_util.tree_all(shape_check_no_rope), (
+        f"Shapes don't match without RoPE: {shape_check_no_rope}"
+    )
 
 
 @pytest.mark.parametrize("start_pos", [0, 8, 16])

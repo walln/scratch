@@ -27,7 +27,7 @@ jobs:
               run: uvx ruff format --check
 
             - name: Typecheck
-              run: uvx mypy src --enable-incomplete-feature=NewGenericSyntax
+              run: uvx ty check
 
             - name: Test
               run: uv run pytest tests

@@ -112,5 +112,7 @@ if __name__ == "__main__":
     # And comment out the following line
     logger = None
 
-    trainer = ImageClassificationParallelTrainer(model, trainer_config, logger=logger)
+    trainer = ImageClassificationParallelTrainer[CNN](
+        model, trainer_config, logger=logger
+    )
     trainer.train_and_evaluate(dataset.train, dataset.test)

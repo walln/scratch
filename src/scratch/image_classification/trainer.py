@@ -5,9 +5,8 @@ NNX API with SPMD parallelism. The trainer supports distributed training on mult
 devices.
 """
 
-from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TypeVar
+from typing import Protocol, TypeVar
 
 import jax
 import jax.numpy as jnp
@@ -24,6 +23,14 @@ from scratch.trainer import (
 )
 
 M = TypeVar("M", bound=nnx.Module)
+
+
+class CallableModule(Protocol):
+    """Protocol for callable modules."""
+
+    def __call__(self, *args, **kwargs) -> jnp.ndarray:
+        """Call the module."""
+        ...  # pragma: no cover
 
 
 @dataclass
@@ -83,8 +90,8 @@ class ImageClassificationParallelTrainer(SupervisedTrainer[M]):
         def train_step(
             model: M, train_state: TrainState, inputs: jnp.ndarray, targets: jnp.ndarray
         ):
-            def loss_fn(model: Callable):
-                logits = model(inputs)
+            def loss_fn(model: nnx.Module):
+                logits = model(inputs)  # type: ignore
                 assert logits.shape == targets.shape
                 loss = optax.softmax_cross_entropy(logits=logits, labels=targets).mean()
                 return loss, logits

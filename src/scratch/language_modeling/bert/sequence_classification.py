@@ -67,6 +67,8 @@ if __name__ == "__main__":
     trainer_config = SequenceClassificationTrainerConfig(
         batch_size=2, num_labels=dataset.metadata.num_classes
     )
-    trainer = SequenceClassificationTrainer(model, trainer_config=trainer_config)
+    trainer = SequenceClassificationTrainer[BertForSequenceClassification](
+        model, trainer_config=trainer_config
+    )
 
     trainer.train_and_evaluate(dataset.train, dataset.test)

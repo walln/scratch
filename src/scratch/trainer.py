@@ -28,7 +28,7 @@ from scratch.utils.timer import capture_time
 M = TypeVar("M", bound=nnx.Module)
 
 
-class TrainState(Generic[M], nnx.Optimizer):
+class TrainState(nnx.Optimizer, Generic[M]):
     """Train state for training models.
 
     This class manages the training state, including the model, optimizer, and metrics.
@@ -212,7 +212,6 @@ class BaseTrainer(Generic[M], ABC):
         opts = ocp.CheckpointManagerOptions(max_to_keep=3, cleanup_tmp_directories=True)
         return ocp.CheckpointManager(
             self.trainer_config.checkpoint_path,
-            item_names=("model", "opt_state"),
             options=opts,
         )
 
@@ -226,13 +225,17 @@ class BaseTrainer(Generic[M], ABC):
         self.logger.log(f"Saving checkpoint at step {step}")
         state = nnx.state(self.model)
         opt_state = self.train_state.opt_state
+
+        # Create the checkpoint data structure
+        checkpoint_data = {
+            "model": state,
+            "opt_state": opt_state,
+        }
+
         self.checkpoint_manager.save(
             step=step,
+            items=checkpoint_data,
             metrics=metrics,
-            args=ocp.args.Composite(
-                model=ocp.args.PyTreeSave(state),
-                opt_state=ocp.args.PyTreeSave(opt_state),
-            ),
         )
         self.checkpoint_manager.wait_until_finished()
 
@@ -244,20 +247,24 @@ class BaseTrainer(Generic[M], ABC):
         """
         model = nnx.eval_shape(lambda: self.model)
         state = nnx.state(model)
-
         opt_state = self.train_state.opt_state
 
-        self.checkpoint_manager.restore(
+        # Create the target structure for restoration
+        target_structure = {
+            "model": state,
+            "opt_state": opt_state,
+        }
+
+        restored = self.checkpoint_manager.restore(
             step=step,
-            args=ocp.args.Composite(
-                model=ocp.args.PyTreeRestore(state),
-                opt_state=ocp.args.PyTreeRestore(opt_state),
-            ),
+            items=target_structure,
         )
 
+        # Update the model and train state with restored data
+        nnx.update(model, restored["model"])
         self.model = model
         self.train_state = self._create_train_state()
-        self.train_state.opt_state = opt_state
+        self.train_state.opt_state = restored["opt_state"]
         self.global_step = step
 
         self.logger.log(f"Loaded checkpoint at step {step}")

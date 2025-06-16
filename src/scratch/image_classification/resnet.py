@@ -321,5 +321,5 @@ if __name__ == "__main__":
     trainer_config = ImageClassificationParallelTrainerConfig(
         batch_size=batch_size, learning_rate=0.01, epochs=3
     )
-    trainer = ImageClassificationParallelTrainer(model, trainer_config)
+    trainer = ImageClassificationParallelTrainer[ResNet](model, trainer_config)
     trainer.train_and_evaluate(dataset.train, dataset.test)

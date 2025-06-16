@@ -4,7 +4,8 @@ import inspect
 import warnings
 from dataclasses import dataclass, field
 
-from transformers import AutoTokenizer, PreTrainedTokenizerBase
+from transformers import AutoTokenizer
+from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
 
 def patch_datasets_warning():
@@ -32,16 +33,6 @@ def patch_datasets_warning():
                 frame = frame.f_back
         return False
 
-    # Register the custom filter
-    warnings.filterwarnings("ignore", category=UserWarning, module=r".*")
-    warnings.showwarning = (
-        lambda message, category, filename, lineno, file=None, line=None: None
-        if filter_specific_warning(
-            warnings.WarningMessage(message, category, filename, lineno)
-        )
-        else warnings.showwarning(message, category, filename, lineno)
-    )
-
 
 @dataclass
 class TokenizerMetadata:
@@ -62,7 +53,7 @@ class TokenizerMetadata:
     def from_tokenizer(cls, tokenizer: PreTrainedTokenizerBase, max_length: int):
         """Create metadata from a tokenizer instance."""
         vocab_size = tokenizer.vocab_size  # type: ignore
-        if not vocab_size:
+        if not vocab_size or not isinstance(vocab_size, int):
             raise ValueError("The tokenizer does not have a vocab size.")
         return cls(
             vocab_size=vocab_size,

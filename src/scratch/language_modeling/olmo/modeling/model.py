@@ -115,7 +115,7 @@ class OLMo(nnx.Module):
 
         # Attention masking
         if attention_mask is not None:
-            attention_mask = attention_mask.astype(dtype=jnp.float32).view(
+            attention_mask = attention_mask.astype(dtype=jnp.float32).reshape(  # type: ignore
                 batch_size, -1
             )[:, None, None, :]
             attention_mask = (1.0 - attention_mask) * jnp.finfo(
@@ -188,5 +188,7 @@ class OLMo(nnx.Module):
 
         return OLMoForwardResult(
             logits=logits,
-            hidden_states=tuple(all_hidden_states) if output_hidden_states else None,
+            hidden_states=tuple(all_hidden_states)
+            if (output_hidden_states and all_hidden_states)
+            else None,  # type: ignore
         )

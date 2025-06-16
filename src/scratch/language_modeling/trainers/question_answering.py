@@ -5,7 +5,6 @@ flax NNX API with SPMD parallelism. The trainer supports distributed training on
 multiple devices.
 """
 
-from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TypeVar
 
@@ -56,8 +55,8 @@ class QuestionAnsweringTrainer(SupervisedTrainer[M]):
 
         @nnx.jit
         def train_step(model: M, train_state: TrainState, batch: dict):
-            def loss_fn(model: Callable):
-                start_logits, end_logits = model(
+            def loss_fn(model: nnx.Module):
+                start_logits, end_logits = model(  # type: ignore
                     input_ids=batch["input_ids"],
                     attention_mask=batch["attention_mask"],
                     train=True,
@@ -128,7 +127,7 @@ class QuestionAnsweringTrainer(SupervisedTrainer[M]):
 
         @nnx.jit
         def eval_step(model: M, train_state: TrainState, batch: dict):
-            start_logits, end_logits = model(
+            start_logits, end_logits = model(  # type: ignore
                 input_ids=batch["input_ids"],
                 attention_mask=batch["attention_mask"],
                 train=False,

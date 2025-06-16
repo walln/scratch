@@ -92,8 +92,9 @@ class Block(nnx.Module):
         self.dropout = nnx.Dropout(config.residual_dropout, rngs=rngs)
 
         # Make sure QKV clip coefficient is positive, otherwise it's not well-defined.
-        if config.clip_qkv is not None:
-            assert config.clip_qkv > 0
+        clip_qkv = config.clip_qkv
+        if clip_qkv is not None:
+            assert clip_qkv > 0.0
 
         self.activation = SwiGLU()
         assert (self.activation_multiplier * self.hidden_size) % 1 == 0

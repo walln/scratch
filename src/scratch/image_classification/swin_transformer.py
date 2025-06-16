@@ -741,5 +741,5 @@ if __name__ == "__main__":
     trainer_config = ImageClassificationParallelTrainerConfig(
         batch_size=batch_size, epochs=5
     )
-    trainer = ImageClassificationParallelTrainer(model, trainer_config)
+    trainer = ImageClassificationParallelTrainer[SwinTransformer](model, trainer_config)
     trainer.train_and_evaluate(dataset.train, dataset.test)

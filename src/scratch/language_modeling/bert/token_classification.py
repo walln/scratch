@@ -67,6 +67,8 @@ if __name__ == "__main__":
     trainer_config = TokenClassificationTrainerConfig(
         batch_size=dataset.batch_size, num_labels=dataset.metadata.num_labels
     )
-    trainer = TokenClassificationTrainer(model, trainer_config=trainer_config)
+    trainer = TokenClassificationTrainer[BertForTokenClassification](
+        model, trainer_config=trainer_config
+    )
 
     trainer.train_and_evaluate(dataset.train, dataset.test)

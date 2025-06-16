@@ -21,7 +21,7 @@ def ensure_finite(
       The input tensor with the infinite values replaced.
     """
 
-    def replace_inf(x, value) -> jnp.ndarray:
+    def replace_inf(x, value):
         return jnp.where(jnp.isinf(x), value, x)
 
     if check_neg_inf:
