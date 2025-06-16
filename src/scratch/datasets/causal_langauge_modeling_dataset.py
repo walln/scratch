@@ -90,18 +90,18 @@ def load_hf_dataset(
     )
 
     if shuffle:
-        data = data.shuffle().with_format("torch")
+        data = data.shuffle()
 
     if validate:
-        data = data.filter(validate).with_format("torch")
+        data = data.filter(validate)
 
     def tokenize_function(examples):
         return tokenizer(examples["text"], padding="max_length", truncation=True)
 
-    data = data.map(tokenize_function, batched=True).with_format("torch")
+    data = data.map(tokenize_function, batched=True)
 
     if prepare:
-        data = data.map(prepare).with_format("torch")
+        data = data.map(prepare)
 
     return data.with_format("torch")
 
@@ -162,9 +162,9 @@ def dummy_clm_dataset(
             batch["attention_mask"],
             batch["labels"],
         )
-        input_ids = torch.tensor(input_ids, dtype=torch.int64)
-        attention_mask = torch.tensor(attention_mask, dtype=torch.int64)
-        labels = torch.tensor(labels, dtype=torch.int64)
+        input_ids = torch.as_tensor(input_ids, dtype=torch.int64)
+        attention_mask = torch.as_tensor(attention_mask, dtype=torch.int64)
+        labels = torch.as_tensor(labels, dtype=torch.int64)
         return CausalLanguageModelingBatch(
             input_ids=input_ids, attention_mask=attention_mask, labels=labels
         )
@@ -196,12 +196,12 @@ def wikitext2_dataset(
     tokenizer = load_tokenizer(tokenizer_name, max_length=max_length)
 
     def prepare(sample):
-        input_ids = sample["input_ids"]
-        input_ids = torch.tensor(input_ids, dtype=torch.int64)
-        labels = input_ids.clone()
+        input_ids = np.array(sample["input_ids"], dtype=np.int64)
+        labels = input_ids.copy()
         # Make a lower triangular attention mask
-        attention_mask = np.tril(np.ones((len(input_ids), len(input_ids))))
-        attention_mask = torch.tensor(attention_mask, dtype=torch.int64)
+        attention_mask = np.tril(
+            np.ones((len(input_ids), len(input_ids)), dtype=np.int64)
+        )
         sample["input_ids"], sample["attention_mask"], sample["labels"] = (
             input_ids,
             attention_mask,
