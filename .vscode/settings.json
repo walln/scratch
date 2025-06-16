@@ -16,5 +16,7 @@
  "python.analysis.typeCheckingMode": "basic",
  "ruff.nativeServer": true,
  "ruff.configuration": "pyproject.toml",
- "ruff.path": [".venv/bin/ruff"]
+ "ruff.path": [".venv/bin/ruff"],
+ "ty.experimental.completions.enable": true,
+ "python.languageServer": "None"
 }
