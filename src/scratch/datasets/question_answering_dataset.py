@@ -88,10 +88,10 @@ def dummy_question_answering_dataset(
             batch["start_positions"],
             batch["end_positions"],
         )
-        input_ids = torch.tensor(input_ids, dtype=torch.long)
-        attention_mask = torch.tensor(attention_mask, dtype=torch.long)
-        start_positions = torch.tensor(start_positions, dtype=torch.long)
-        end_positions = torch.tensor(end_positions, dtype=torch.long)
+        input_ids = torch.as_tensor(input_ids, dtype=torch.long)
+        attention_mask = torch.as_tensor(attention_mask, dtype=torch.long)
+        start_positions = torch.as_tensor(start_positions, dtype=torch.long)
+        end_positions = torch.as_tensor(end_positions, dtype=torch.long)
         return QuestionAnsweringBatch(
             input_ids=input_ids,
             attention_mask=attention_mask,

@@ -94,17 +94,20 @@ def load_hf_dataset(
         The IterableDataset object
     """
     data = load_dataset(
-        dataset_name, split=dataset_split, trust_remote_code=True, streaming=True
-    ).with_format("torch")
+        dataset_name,
+        split=dataset_split,
+        trust_remote_code=True,
+        streaming=True,
+    )
 
     if shuffle:
-        data = data.shuffle().with_format("torch")
+        data = data.shuffle()
 
     if validate:
-        data = data.filter(validate).with_format("torch")
+        data = data.filter(validate)
 
     if prepare:
-        data = data.map(prepare).with_format("torch")
+        data = data.map(prepare)
 
     return data.with_format("torch")
 
@@ -172,15 +175,13 @@ def mnist_dataset(batch_size=32, shuffle=True):
 
     def prepare(sample):
         images, labels = sample["image"], sample["label"]
-        # Ensure the images are float tensors
-        images = images.to(torch.float32)
-        # Normalize the images
-        images = images / 255.0
-        # Convert labels to one-hot encoding
-        labels = labels.to(torch.int64)  # Ensure labels are int32 tensors
-        labels = F.one_hot(labels, num_classes=10).to(torch.int32)
+        images = transforms.ToTensor()(images).to(torch.float32)
+        labels = F.one_hot(
+            torch.as_tensor(labels, dtype=torch.int64),
+            num_classes=10,
+        ).to(torch.int32)
 
-        sample["image"], sample["label"] = images, labels
+        sample["image"], sample["label"] = images.numpy(), labels.numpy()
         return sample
 
     train_data, test_data = (
@@ -219,20 +220,21 @@ def tiny_imagenet_dataset(batch_size=32, shuffle=True):
 
     def prepare(sample):
         images, labels = sample["image"], sample["label"]
-        # Ensure the images are float tensors
-        images = images.clone().detach().to(torch.float32)
-        # Normalize the images
-        images = images / 255.0
-        # Convert labels to one-hot encoding
-        labels = labels.clone().detach().to(torch.int64)  # Ensure labels are int32
-        labels = F.one_hot(labels, num_classes=200).to(torch.int32)
+        images = transforms.ToTensor()(images).to(torch.float32)
+        labels = F.one_hot(
+            torch.as_tensor(labels, dtype=torch.int64),
+            num_classes=200,
+        ).to(torch.int32)
 
-        sample["image"], sample["label"] = images, labels
+        sample["image"], sample["label"] = images.numpy(), labels.numpy()
         return sample
 
     def validate(sample):
-        transform = transforms.ToTensor()
-        img = transform(sample["image"])
+        img = (
+            sample["image"]
+            if isinstance(sample["image"], torch.Tensor)
+            else transforms.ToTensor()(sample["image"])
+        )
         return (
             img.shape == (3, 64, 64)
             and torch.isnan(img).sum() == 0

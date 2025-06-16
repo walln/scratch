@@ -91,9 +91,9 @@ def dummy_token_classification_dataset(
             batch["attention_mask"],
             batch["labels"],
         )
-        input_ids = torch.tensor(input_ids, dtype=torch.long)
-        attention_mask = torch.tensor(attention_mask, dtype=torch.long)
-        labels = torch.tensor(labels, dtype=torch.long)
+        input_ids = torch.as_tensor(input_ids, dtype=torch.long)
+        attention_mask = torch.as_tensor(attention_mask, dtype=torch.long)
+        labels = torch.as_tensor(labels, dtype=torch.long)
         return TokenClassificationBatch(
             input_ids=input_ids, attention_mask=attention_mask, labels=labels
         )

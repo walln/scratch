@@ -81,22 +81,25 @@ def load_hf_dataset(
         The IterableDataset object
     """
     data = load_dataset(
-        dataset_name, split=dataset_split, trust_remote_code=True, streaming=True
+        dataset_name,
+        split=dataset_split,
+        trust_remote_code=True,
+        streaming=True,
     )
 
     if shuffle:
-        data = data.shuffle().with_format("torch")
+        data = data.shuffle()
 
     if validate:
-        data = data.filter(validate).with_format("torch")
+        data = data.filter(validate)
 
     def tokenize_function(examples):
         return tokenizer(examples["text"], padding="max_length", truncation=True)
 
-    data = data.map(tokenize_function, batched=True).with_format("torch")
+    data = data.map(tokenize_function, batched=True)
 
     if prepare:
-        data = data.map(prepare).with_format("torch")
+        data = data.map(prepare)
 
     return data.with_format("torch")
 
@@ -157,8 +160,8 @@ def dummy_sequence_classification_dataset(
             batch["input_ids"],
             batch["label"],
         )
-        input_ids = torch.tensor(input_ids, dtype=torch.int64)
-        label = torch.tensor(label, dtype=torch.int64)
+        input_ids = torch.as_tensor(input_ids, dtype=torch.int64)
+        label = torch.as_tensor(label, dtype=torch.int64)
         label = F.one_hot(label, num_classes=num_classes).to(torch.int32)
         return SequenceClassificationBatch(
             input_ids=input_ids,
@@ -192,21 +195,12 @@ def imdb_dataset(
     tokenizer = load_tokenizer(tokenizer_name, max_length=max_length)
 
     def prepare(sample):
-        input_ids, labels = (
-            sample["input_ids"],
-            sample["label"],
-        )
-        input_ids = torch.tensor(input_ids, dtype=torch.int64)
-        labels = torch.tensor(labels, dtype=torch.int64)
-        labels = F.one_hot(labels, num_classes=2).to(torch.int32)
+        input_ids, labels = sample["input_ids"], sample["label"]
+        input_ids = np.array(input_ids, dtype=np.int64)
+        labels_tensor = torch.as_tensor(labels, dtype=torch.int64)
+        labels = F.one_hot(labels_tensor, num_classes=2).to(torch.int32).numpy()
 
-        (
-            sample["input_ids"],
-            sample["label"],
-        ) = (
-            input_ids,
-            labels,
-        )
+        sample["input_ids"], sample["label"] = input_ids, labels
         return sample
 
     train_data, test_data = (
